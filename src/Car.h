@@ -16,6 +16,8 @@ private:
     const double FRONT_SAFE_DISTANCE = 30.0; // meters
     const double REAR_SAFE_DISTANCE = 20.0; //meters
     const double SPEED_LIMIT = 49.75;// 49.5mph = 22.098m/s
+    const double SPEED_CHANGE = 0.15;
+    const double SPEED_MARGIN = 0.1;
     const string STRAIGHT = "^";
     const string LEFT = "<";
     const string RIGHT = ">";
@@ -44,6 +46,7 @@ private:
     bool isJerkSafe();
 
     string pad(double d);
+    string pad(double d,int pad);
 
 public:
     Car();
