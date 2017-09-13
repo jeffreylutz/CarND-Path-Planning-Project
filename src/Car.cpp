@@ -359,7 +359,7 @@ void Car::update_state(const vector<double> &previous_path_x, const double &end_
         //if vehicle is in front of ego and lesser than 50km/hr at final projected position record
         //target vehicle s location and speed. Only vehicle in front and closest to ego is recorded
         if (inFront) {
-            double distance_multiplier = (ego_lane == lane_index ? 1.05 : 3.0);
+            double distance_multiplier = (ego_lane == lane_index ? CURRENT_LANE_DISTANCE_MULTIPLIER : OTHER_LANE_DISTANCE_MULTIPLIER);
             if (s_diff < (FRONT_SAFE_DISTANCE * distance_multiplier) &&
                 s_diff < abs(lane_frontcar_s[lane_index] - ego_future_s)) {
                 lane_speed[lane_index] = check_speed * 2.237;

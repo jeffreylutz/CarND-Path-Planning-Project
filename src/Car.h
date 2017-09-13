@@ -14,6 +14,8 @@ class Car {
 
 private:
     const int WAIT_TIME_BETWEEN_LANE_CHANGES = 5; // seconds between lane change to minimize jerk
+    const double CURRENT_LANE_DISTANCE_MULTIPLIER = 0.75;
+    const double OTHER_LANE_DISTANCE_MULTIPLIER = 2.0;
     const double EMERGENCY_BRAKE_DISTANCE = 10.0;
     const double FRONT_SAFE_DISTANCE = 30.0; // meters
     const double REAR_SAFE_DISTANCE = 20.0; //meters
