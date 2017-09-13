@@ -22,15 +22,15 @@ Car::Car() {
 }
 
 string Car::pad(double d) {
-    return pad(d, 6);
+    return pad(d, 6,5);
 }
 
-string Car::pad(double d, int pad) {
+string Car::pad(double d, int pad, int trim_right) {
     double dnew = round(d * 10.0) / 10.0;
     string val = " " + to_string(dnew);
-    val = val.substr(0, val.length() - 5);
+    val = val.substr(0, val.length() - trim_right);
 
-    while (val.length() < pad) {
+    while (val.length() <= pad) {
         val = " " + val;
     }
     return val;
@@ -46,8 +46,8 @@ void Car::setLaneChangeTime() {
     time(&last_lane_change);
 }
 
-bool Car::isJerkSafe() {
-    return getLastLaneChangeDiff() > 2;
+bool Car::isLaneChangeJerkSafe() {
+    return getLastLaneChangeDiff() > WAIT_TIME_BETWEEN_LANE_CHANGES;
 }
 
 long Car::getLastLaneChangeDiff() {
@@ -99,16 +99,22 @@ variable will also be changed once lane change is determined to be safe for exec
 
     vector<double> next_x_vals;
     vector<double> next_y_vals;
+    string ego_lane_str = ego_lane == 0 ? "Left  " : (ego_lane == 1 ? "Middle" : "Right ");
     int prev_size = previous_path_x.size();
 
-    int lane0 = lane_speed[0];
-    int lane1 = lane_speed[1];
-    int lane2 = lane_speed[2];
+    string msg = "current_lane/left/middle/right/steer/last_lane_change: " + ego_lane_str + " -"
+                 + pad(lane_speed[0], 4,6) + pad(lane_speed[1], 4,6)
+                 + pad(lane_speed[2], 4,6) + " - " + ego_state + " - ";
+    if(last_msg != msg) {
+        last_msg = msg;
+//        msg = "" + msg + "" + getLastLaneChangeDiff();
+        cout << msg << getLastLaneChangeDiff() << endl;
+    }
 
-
-    cout << "lane 0: " << lane0 << " lane 1: " << lane1 << " lane 2: " << lane2
-         << " -- Selected State: " << ego_state << " Last lane change: " << getLastLaneChangeDiff() << endl;
-
+//    cout << "current/left/middle/right: " << ego_lane_str << " -" << pad(lane_speed[0], 3) << pad(lane_speed[1], 3)
+//         << pad(lane_speed[2], 3) << " -- Selected State: " << ego_state << " Last lane change: "
+//         << getLastLaneChangeDiff() << endl;
+//
     if (ego_state == STRAIGHT) {
         //Code to maintain lane speed and sufficient separaton between ego and front car
         if ((ref_v + SPEED_MARGIN) < SPEED_LIMIT && lane_frontcar_s[ego_lane] - ego_future_s > FRONT_SAFE_DISTANCE) {
@@ -146,7 +152,7 @@ variable will also be changed once lane change is determined to be safe for exec
         //maintaince 30m from front car and 20m from back car
         if (lane_frontcar_s[ego_lane - 1] - ego_future_s > REAR_SAFE_DISTANCE) {
 
-            if (ego_future_s - lane_backcar_s[ego_lane - 1] > REAR_SAFE_DISTANCE - 10.0 && isJerkSafe()) {
+            if (ego_future_s - lane_backcar_s[ego_lane - 1] > REAR_SAFE_DISTANCE - 10.0 ) {
                 setLaneChangeTime();
                 ego_lane = ego_lane - 1;
             }
@@ -175,7 +181,7 @@ variable will also be changed once lane change is determined to be safe for exec
         //maintaince 30m from front car and 20m from back car
         if (lane_frontcar_s[ego_lane + 1] - ego_future_s > REAR_SAFE_DISTANCE) {
 
-            if (ego_future_s - lane_backcar_s[ego_lane + 1] > REAR_SAFE_DISTANCE - 10.0 && isJerkSafe()) {
+            if (ego_future_s - lane_backcar_s[ego_lane + 1] > REAR_SAFE_DISTANCE - 10.0) {
                 setLaneChangeTime();
                 ego_lane = ego_lane + 1;
             }
@@ -361,9 +367,9 @@ void Car::update_state(const vector<double> &previous_path_x, const double &end_
         double s = sensor_fusion[i][5];
         double d = sensor_fusion[i][6];
 
-        cout << "id/ego_s/ego_d/other_s/other_d/distance: " << pad(id, 4) << " " << pad(ego_s) << " " << pad(ego_d)
-             << " "
-             << pad(s) << " " << pad(d) << " " << pad(s - ego_s) << " " << pad(d - ego_d) << endl;
+//        cout << "id/ego_s/ego_d/other_s/other_d/distance: " << pad(id, 4) << " " << pad(ego_s) << " " << pad(ego_d)
+//             << " "
+//             << pad(s) << " " << pad(d) << " " << pad(s - ego_s) << " " << pad(d - ego_d) << endl;
 
         check_speed = sqrt(vx * vx + vy * vy);
         check_car_s = sensor_fusion[i][5];
@@ -410,7 +416,8 @@ void Car::update_state(const vector<double> &previous_path_x, const double &end_
     ego_state = STRAIGHT;
     bool isEgoLaneSpeedLessThanIdealLaneSpeed = lane_speed[ego_lane] < lane_speed[ideal_lane];
 
-    if (ego_lane != ideal_lane && isEgoLaneSpeedLessThanIdealLaneSpeed) {
+    if (ego_lane != ideal_lane && isEgoLaneSpeedLessThanIdealLaneSpeed
+            && isLaneChangeJerkSafe()) {
         if (ego_lane < ideal_lane) {
             ego_state = RIGHT;
         } else {

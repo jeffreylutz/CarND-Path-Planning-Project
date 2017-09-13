@@ -13,10 +13,11 @@ using namespace std;
 class Car {
 
 private:
+    const int WAIT_TIME_BETWEEN_LANE_CHANGES = 5; // seconds between lane change to minimize jerk
     const double FRONT_SAFE_DISTANCE = 30.0; // meters
     const double REAR_SAFE_DISTANCE = 20.0; //meters
     const double SPEED_LIMIT = 49.75;// 49.5mph = 22.098m/s
-    const double SPEED_CHANGE = 0.15;
+    const double SPEED_CHANGE = 0.15 * 2.0;
     const double SPEED_MARGIN = 0.1;
     const string STRAIGHT = "^";
     const string LEFT = "<";
@@ -36,6 +37,7 @@ private:
     vector<double> lane_speed;
     vector<double> lane_frontcar_s;
     vector<double> lane_backcar_s;
+    string last_msg;
 
     double pi();
     double deg2rad(double deg);
@@ -43,10 +45,10 @@ private:
     vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> maps_x, vector<double> maps_y);
     void setLaneChangeTime();
     long getLastLaneChangeDiff();
-    bool isJerkSafe();
+    bool isLaneChangeJerkSafe();
 
     string pad(double d);
-    string pad(double d,int pad);
+    string pad(double d,int pad, int trim_right);
 
 public:
     Car();
