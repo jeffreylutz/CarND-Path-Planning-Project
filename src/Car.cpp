@@ -65,6 +65,14 @@ void Car::update_position(double x, double y, double s, double d, double yaw, do
     ego_speed = speed;
 }
 
+double Car::getSpeedChange() {
+    if(ego_speed > 40.0) {
+        // if current speed is greater than 40 mph, then return speed change without multiplier
+        return SPEED_CHANGE;
+    }
+    return SPEED_CHANGE * 2.5;
+}
+
 vector<double> Car::getXY(double s, double d, vector<double> maps_s, vector<double> maps_x, vector<double> maps_y) {
     int prev_wp = -1;
 
@@ -118,9 +126,9 @@ variable will also be changed once lane change is determined to be safe for exec
     if (ego_state == STRAIGHT) {
         //Code to maintain lane speed and sufficient separaton between ego and front car
         if ((ref_v + SPEED_MARGIN) < SPEED_LIMIT && lane_frontcar_s[ego_lane] - ego_future_s > FRONT_SAFE_DISTANCE) {
-            ref_v += SPEED_CHANGE;
+            ref_v += getSpeedChange();
         } else { // else decrease speed to maintain safe distance and speed
-            ref_v -= SPEED_CHANGE;
+            ref_v -= getSpeedChange();
         }
         //perform emergency breaking if front car future s and ego_future_s separation is less than 10m
         if (lane_frontcar_s[ego_lane] - ego_future_s < 10) {
@@ -132,15 +140,15 @@ variable will also be changed once lane change is determined to be safe for exec
             //if Lane Change Left and velocity is lesser than current lane speed, check target lane speed and reduce speed
             //to 5MPH slower than target lane speed to find opportunity to change lane
             if (ref_v < lane_speed[ego_lane - 1] - 5.0) {
-                ref_v += SPEED_CHANGE;
+                ref_v += getSpeedChange();
             } else {
-                ref_v -= SPEED_CHANGE;
+                ref_v -= getSpeedChange();
             }
         }
             //else decrease speed to maintain safety distance and safe speed
         else {
 
-            ref_v -= SPEED_CHANGE;
+            ref_v -= getSpeedChange();
 
             //perform emergency breaking if front car future s and ego_future_s separation is less than 10m
             if (lane_frontcar_s[ego_lane] - ego_future_s < 10) {
@@ -162,9 +170,9 @@ variable will also be changed once lane change is determined to be safe for exec
 
         if (ref_v < SPEED_LIMIT && lane_frontcar_s[ego_lane] - ego_future_s > REAR_SAFE_DISTANCE) {
             if (ref_v < lane_speed[ego_lane + 1] - 5.0) {
-                ref_v += SPEED_CHANGE;
+                ref_v += getSpeedChange();
             } else {
-                ref_v -= SPEED_CHANGE;
+                ref_v -= getSpeedChange();
             }
         }
             //else perform braking as per emergency or normal
