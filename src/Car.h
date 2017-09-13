@@ -13,24 +13,24 @@ using namespace std;
 class Car {
 
 private:
+    const double FRONT_SAFE_DISTANCE = 30.0; // meters
+    const double REAR_SAFE_DISTANCE = 20.0; //meters
+    const double SPEED_LIMIT = 49.75;// 49.5mph = 22.098m/s
+    const string STRAIGHT = "^";
+    const string LEFT = "<";
+    const string RIGHT = ">";
+
     int ego_lane;
     time_t last_lane_change;
-    double MAX_SPEED = 80.0;
     double ego_x;
     double ego_y;
     double ego_s;
     double ego_d;
     double ego_yaw;
     double ego_speed;
-    double FRONT_SAFE_DISTANCE = 50.0; // meters
-    double REAR_SAFE_DISTANCE = 50.0; //meters
     double ref_v;
-    double SPEED_LIMIT = 49.75;// 49.5mph = 22.098m/s
     double ego_future_s;
-    string STRAIGHT = "^";
-    string LEFT = "<";
-    string RIGHT = ">";
-    string ego_state; // state includes KL - Keep Lane / LCL - Lane Change Left / LCR - Lane Change Right
+    string ego_state;
     vector<double> lane_speed;
     vector<double> lane_frontcar_s;
     vector<double> lane_backcar_s;
@@ -42,7 +42,8 @@ private:
     void setLaneChangeTime();
     long getLastLaneChangeDiff();
     bool isJerkSafe();
-//    bool isFrontCarFasterThanMe(double )
+
+    string pad(double d);
 
 public:
     Car();

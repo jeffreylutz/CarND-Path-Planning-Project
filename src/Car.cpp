@@ -21,6 +21,17 @@ Car::Car() {
     cout << "Autonomous Vehicle created at lane 1" << endl;
 }
 
+string Car::pad(double d) {
+    double dnew = round(d * 10.0) / 10.0;
+    string val = " " + to_string(dnew);
+    val = val.substr(0,val.length()-5);
+
+    while(val.length() < 6) {
+        val = " " + val;
+    }
+    return val;
+}
+
 double Car::pi() { return M_PI; }
 
 double Car::deg2rad(double deg) { return deg * pi() / 180.0; }
@@ -97,7 +108,7 @@ variable will also be changed once lane change is determined to be safe for exec
     if (ego_state == STRAIGHT) {
 
         //Code to maintain lane speed and sufficient separaton between ego and front car
-        if (ref_v < SPEED_LIMIT && lane_frontcar_s[ego_lane] - ego_future_s > REAR_SAFE_DISTANCE) {
+        if (ref_v < SPEED_LIMIT && lane_frontcar_s[ego_lane] - ego_future_s > FRONT_SAFE_DISTANCE) {
 
             ref_v += .224;
         }
@@ -351,20 +362,16 @@ void Car::update_state(const vector<double> &previous_path_x, const double &end_
     * Data format for each car is: [id, x, y, vx, vy, s, d].
     *************************/
     for (int i = 0; i < sensor_fusion.size(); i++) {
-        float d = sensor_fusion[i][6];
-
-        int id = sensor_fusion[i][0];
+        double id = sensor_fusion[i][0];
         x = sensor_fusion[i][1];
         y = sensor_fusion[i][2];
-        int distance_to_car = sqrt(pow(x - ego_x, 2) + pow(y - ego_y, 2));
-
-//        if (id == 1) {
-//            cout << "x/y/ego_x/ego_y/distance: " << x << "/" << y << "/" << ego_x << "/" << ego_y << "/"
-//                 << distance_to_car << endl;
-//        }
-
         vx = sensor_fusion[i][3];
         vy = sensor_fusion[i][4];
+        double s = sensor_fusion[i][5];
+        double d = sensor_fusion[i][6];
+
+        cout << "id/ego_s/ego_d/other_s/other_d/distance: " << pad(id) << " " << pad(ego_s) << " " << pad(ego_d) << " " << pad(s) << " " << pad(d) << " " << pad(s - ego_s) << " " << pad(d - ego_d) << endl;
+
         check_speed = sqrt(vx * vx + vy * vy);
         check_car_s = sensor_fusion[i][5];
         int lane_index;
@@ -376,20 +383,21 @@ void Car::update_state(const vector<double> &previous_path_x, const double &end_
             lane_index = 2;
         }
         check_car_future_s = check_car_s + ((double) prev_size * .02 * check_speed);
+        double s_diff = abs(check_car_future_s - ego_future_s);
+        bool inFront = check_car_future_s > ego_future_s;
 
         //if vehicle is in front of ego and lesser than 50km/hr at final projected position record
         //target vehicle s location and speed. Only vehicle in front and closest to ego is recorded
-        if ((check_car_future_s > ego_future_s) && (abs(check_car_future_s - ego_future_s) < MAX_SPEED)) {
-            if (abs(check_car_future_s - ego_future_s) < abs(lane_frontcar_s[lane_index] - ego_future_s)
-                    && distance_to_car < FRONT_SAFE_DISTANCE) {
+        if(inFront) {
+            if (s_diff < FRONT_SAFE_DISTANCE &&
+                    s_diff < abs(lane_frontcar_s[lane_index] - ego_future_s) ) {
                 lane_speed[lane_index] = check_speed * 2.237;
                 lane_frontcar_s[lane_index] = check_car_future_s;
             }
-        } else if ((check_car_future_s < ego_future_s) &&
-                   (abs(check_car_future_s - ego_future_s) < REAR_SAFE_DISTANCE)) {
+        } else {
             //if vehicle is behind ego and lesser than REAR_SAFE_DISTANCE at final projected position record
             //target vehicle s location. Only vehicle behind and closest to ego is recorded.
-            if (abs(check_car_future_s - ego_future_s) < abs(lane_backcar_s[lane_index] - ego_future_s)) {
+            if (s_diff < REAR_SAFE_DISTANCE && abs(check_car_future_s - ego_future_s) < abs(lane_backcar_s[lane_index] - ego_future_s)) {
                 lane_backcar_s[lane_index] = check_car_future_s;
             }
         }
@@ -404,51 +412,14 @@ void Car::update_state(const vector<double> &previous_path_x, const double &end_
     //ideal_lane is the lane that allows highest travel speed
     int ideal_lane = distance(lane_speed.begin(), max_element(lane_speed.begin(), lane_speed.end()));
 
-    //if ego is already travelling at max speed limit of the road, keep in current lane
-    if (lane_speed[ego_lane] == SPEED_LIMIT) {
-        ego_state = STRAIGHT;
-    } else {
+    // The default is to continue straight in existing lane
+    ego_state = STRAIGHT;
 
-        if (ego_lane == 0) {
-            //if ego is in lane 0 and is also the ideal_lane, keep lane
-            if (ego_lane == ideal_lane) {
-                ego_state = STRAIGHT;
-            }
-                //else Lane Change Right
-            else {
-                ego_state = RIGHT;
-            }
-
-        } else if (ego_lane == 1) {
-
-            //if ego is in lane 1 and is also the ideal_lane, keep lane
-            if (ego_lane == ideal_lane) {
-                ego_state = STRAIGHT;
-            } else if (ego_lane > ideal_lane) {
-
-                //else if ideal lane is to the left, check if right lane is also at max road speed of 49.5 and no vehicle behind
-                //this is due to perculiarity of both lane 0 and 2 are at max road speed of 49.5 and preference should be
-                //given to the one with no vehicle behind that might prevent lane changes
-                if (lane_speed[ego_lane + 1] == 49.5 && lane_backcar_s[ego_lane + 1] == numeric_limits<double>::min()) {
-                    ego_state = RIGHT;
-                } else {
-                    ego_state = LEFT;
-                }
-
-            } else {
-                //if ideal_lane is on lane 2, perform Lane Change Right
-                ego_state = RIGHT;
-            }
-        } else if (ego_lane == 2) {
-
-            //if ego is in lane 2 and is also the ideal_lane, keep lane
-            if (ego_lane == ideal_lane) {
-                ego_state = STRAIGHT;
-            }
-                //else Lane Change Left
-            else {
-                ego_state = LEFT;
-            }
+    if(ego_lane != ideal_lane) {
+        if(ego_lane < ideal_lane) {
+            ego_state = RIGHT;
+        } else {
+            ego_state = LEFT;
         }
     }
 }
