@@ -14,11 +14,11 @@ class Car {
 
 private:
     const int WAIT_TIME_BETWEEN_LANE_CHANGES = 5; // seconds between lane change to minimize jerk
+    const double EMERGENCY_BRAKE_DISTANCE = 10.0;
     const double FRONT_SAFE_DISTANCE = 30.0; // meters
     const double REAR_SAFE_DISTANCE = 20.0; //meters
     const double SPEED_LIMIT = 49.75;// 49.5mph = 22.098m/s
-    const double SPEED_CHANGE = 0.15;
-    const double SPEED_MARGIN = 0.1;
+    const double SPEED_CHANGE = 0.25;
     const string STRAIGHT = "^";
     const string LEFT = "<";
     const string RIGHT = ">";

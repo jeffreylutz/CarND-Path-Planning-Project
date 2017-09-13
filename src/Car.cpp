@@ -69,13 +69,10 @@ double Car::getSpeedChange(bool increase) {
     if (!increase) {
         return -1.0 * SPEED_CHANGE;
     }
-    if (ego_speed > 40.0) {
-        // if current speed is greater than 40 mph, then return speed change without multiplier
+    if (SPEED_CHANGE < SPEED_LIMIT - ego_speed) {
         return SPEED_CHANGE;
-    } else if (ego_speed > 45.0) {
-        return SPEED_CHANGE * 0.25;
     }
-    return SPEED_CHANGE * 2.5;
+    return SPEED_LIMIT - ego_speed;
 }
 
 vector<double> Car::getXY(double s, double d, vector<double> maps_s, vector<double> maps_x, vector<double> maps_y) {
@@ -115,6 +112,12 @@ variable will also be changed once lane change is determined to be safe for exec
     string ego_lane_str = ego_lane == 0 ? "Left  " : (ego_lane == 1 ? "Middle" : "Right ");
     int prev_size = previous_path_x.size();
 
+    bool hasSafeDistanceToFrontCar = lane_frontcar_s[ego_lane] - ego_future_s > FRONT_SAFE_DISTANCE;
+    bool isEmergencyBrake = lane_frontcar_s[ego_lane] - ego_future_s < EMERGENCY_BRAKE_DISTANCE;
+    bool mustSlowdown = !hasSafeDistanceToFrontCar
+                        && ref_v > lane_speed[ego_lane];
+    bool isCurrentSpeedLegal = ref_v <= SPEED_LIMIT;
+
     string msg = "current_lane/left/middle/right/steer/last_lane_change: " + ego_lane_str + " -"
                  + pad(lane_speed[0], 4, 6) + pad(lane_speed[1], 4, 6)
                  + pad(lane_speed[2], 4, 6) + " - " + ego_state + " - ";
@@ -122,20 +125,19 @@ variable will also be changed once lane change is determined to be safe for exec
         last_msg = msg;
         cout << msg << getLastLaneChangeDiff() << endl;
     }
-
-    bool isEmergencyBrake = lane_frontcar_s[ego_lane] - ego_future_s < 10;
-    bool isCurrentSpeedLegal = ref_v <= SPEED_LIMIT;
     //perform emergency breaking if front car future s and ego_future_s separation is less than 10m
     if (isEmergencyBrake) {
-        ref_v -= 0.50;
+        ref_v -= SPEED_CHANGE;
+    } else if (mustSlowdown) {
+        ref_v += getSpeedChange(false);
     } else if (!isCurrentSpeedLegal) {
         ref_v += getSpeedChange(false);
     } else if (ego_state == STRAIGHT) {
+        ref_v += getSpeedChange(true);
+
         //Code to maintain lane speed and sufficient separaton between ego and front car
-        if ((ref_v + SPEED_MARGIN) < SPEED_LIMIT && lane_frontcar_s[ego_lane] - ego_future_s > FRONT_SAFE_DISTANCE) {
+        if ((ref_v + SPEED_CHANGE) < SPEED_LIMIT && lane_frontcar_s[ego_lane] - ego_future_s > FRONT_SAFE_DISTANCE) {
             ref_v += getSpeedChange(true);
-        } else { // else decrease speed to maintain safe distance and speed
-            ref_v += getSpeedChange(false);
         }
     } else if (ego_state == LEFT) {
         //Code to maintain lane speed and sufficient separaton between ego and front car
@@ -144,8 +146,6 @@ variable will also be changed once lane change is determined to be safe for exec
             //to 5MPH slower than target lane speed to find opportunity to change lane
             if (ref_v < lane_speed[ego_lane - 1] - 5.0) {
                 ref_v += getSpeedChange(true);
-            } else {
-                ref_v += getSpeedChange(false);
             }
         }
 
@@ -161,8 +161,6 @@ variable will also be changed once lane change is determined to be safe for exec
         if (isCurrentSpeedLegal && lane_frontcar_s[ego_lane] - ego_future_s > REAR_SAFE_DISTANCE) {
             if (ref_v < lane_speed[ego_lane + 1] - 5.0) {
                 ref_v += getSpeedChange(true);
-            } else {
-                ref_v += getSpeedChange(false);
             }
         }
         //check target lane and accelerate during lane change if safe to change lane
@@ -174,7 +172,7 @@ variable will also be changed once lane change is determined to be safe for exec
             }
         }
     }
-    if(ref_v > SPEED_LIMIT) {
+    if (ref_v > SPEED_LIMIT) {
         ref_v = SPEED_LIMIT;
     }
 
@@ -379,7 +377,8 @@ void Car::update_state(const vector<double> &previous_path_x, const double &end_
         //if vehicle is in front of ego and lesser than 50km/hr at final projected position record
         //target vehicle s location and speed. Only vehicle in front and closest to ego is recorded
         if (inFront) {
-            if (s_diff < FRONT_SAFE_DISTANCE &&
+            double distance_multiplier = (ego_lane == lane_index ? 1.05 : 3.0);
+            if (s_diff < (FRONT_SAFE_DISTANCE * distance_multiplier) &&
                 s_diff < abs(lane_frontcar_s[lane_index] - ego_future_s)) {
                 lane_speed[lane_index] = check_speed * 2.237;
                 lane_frontcar_s[lane_index] = check_car_future_s;
