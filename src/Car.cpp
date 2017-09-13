@@ -135,10 +135,6 @@ variable will also be changed once lane change is determined to be safe for exec
     } else if (ego_state == STRAIGHT) {
         ref_v += getSpeedChange(true);
 
-        //Code to maintain lane speed and sufficient separaton between ego and front car
-        if ((ref_v + SPEED_CHANGE) < SPEED_LIMIT && lane_frontcar_s[ego_lane] - ego_future_s > FRONT_SAFE_DISTANCE) {
-            ref_v += getSpeedChange(true);
-        }
     } else if (ego_state == LEFT) {
         //Code to maintain lane speed and sufficient separaton between ego and front car
         if (isCurrentSpeedLegal && lane_frontcar_s[ego_lane] - ego_future_s > REAR_SAFE_DISTANCE) {
