@@ -46,7 +46,7 @@ private:
     void setLaneChangeTime();
     long getLastLaneChangeDiff();
     bool isLaneChangeJerkSafe();
-    double getSpeedChange();
+    double getSpeedChange(bool increase);
 
     string pad(double d);
     string pad(double d,int pad, int trim_right);

@@ -22,7 +22,7 @@ Car::Car() {
 }
 
 string Car::pad(double d) {
-    return pad(d, 6,5);
+    return pad(d, 6, 5);
 }
 
 string Car::pad(double d, int pad, int trim_right) {
@@ -65,10 +65,15 @@ void Car::update_position(double x, double y, double s, double d, double yaw, do
     ego_speed = speed;
 }
 
-double Car::getSpeedChange() {
-    if(ego_speed > 40.0) {
+double Car::getSpeedChange(bool increase) {
+    if (!increase) {
+        return -1.0 * SPEED_CHANGE;
+    }
+    if (ego_speed > 40.0) {
         // if current speed is greater than 40 mph, then return speed change without multiplier
         return SPEED_CHANGE;
+    } else if (ego_speed > 45.0) {
+        return SPEED_CHANGE * 0.25;
     }
     return SPEED_CHANGE * 2.5;
 }
@@ -111,24 +116,19 @@ variable will also be changed once lane change is determined to be safe for exec
     int prev_size = previous_path_x.size();
 
     string msg = "current_lane/left/middle/right/steer/last_lane_change: " + ego_lane_str + " -"
-                 + pad(lane_speed[0], 4,6) + pad(lane_speed[1], 4,6)
-                 + pad(lane_speed[2], 4,6) + " - " + ego_state + " - ";
-    if(last_msg != msg) {
+                 + pad(lane_speed[0], 4, 6) + pad(lane_speed[1], 4, 6)
+                 + pad(lane_speed[2], 4, 6) + " - " + ego_state + " - ";
+    if (last_msg != msg) {
         last_msg = msg;
-//        msg = "" + msg + "" + getLastLaneChangeDiff();
         cout << msg << getLastLaneChangeDiff() << endl;
     }
 
-//    cout << "current/left/middle/right: " << ego_lane_str << " -" << pad(lane_speed[0], 3) << pad(lane_speed[1], 3)
-//         << pad(lane_speed[2], 3) << " -- Selected State: " << ego_state << " Last lane change: "
-//         << getLastLaneChangeDiff() << endl;
-//
     if (ego_state == STRAIGHT) {
         //Code to maintain lane speed and sufficient separaton between ego and front car
         if ((ref_v + SPEED_MARGIN) < SPEED_LIMIT && lane_frontcar_s[ego_lane] - ego_future_s > FRONT_SAFE_DISTANCE) {
-            ref_v += getSpeedChange();
+            ref_v += getSpeedChange(true);
         } else { // else decrease speed to maintain safe distance and speed
-            ref_v -= getSpeedChange();
+            ref_v += getSpeedChange(false);
         }
         //perform emergency breaking if front car future s and ego_future_s separation is less than 10m
         if (lane_frontcar_s[ego_lane] - ego_future_s < 10) {
@@ -140,16 +140,12 @@ variable will also be changed once lane change is determined to be safe for exec
             //if Lane Change Left and velocity is lesser than current lane speed, check target lane speed and reduce speed
             //to 5MPH slower than target lane speed to find opportunity to change lane
             if (ref_v < lane_speed[ego_lane - 1] - 5.0) {
-                ref_v += getSpeedChange();
+                ref_v += getSpeedChange(true);
             } else {
-                ref_v -= getSpeedChange();
+                ref_v += getSpeedChange(false);
             }
-        }
-            //else decrease speed to maintain safety distance and safe speed
-        else {
-
-            ref_v -= getSpeedChange();
-
+        } else { //else decrease speed to maintain safety distance and safe speed
+            ref_v += getSpeedChange(false);
             //perform emergency breaking if front car future s and ego_future_s separation is less than 10m
             if (lane_frontcar_s[ego_lane] - ego_future_s < 10) {
                 ref_v -= 2.0;
@@ -159,36 +155,28 @@ variable will also be changed once lane change is determined to be safe for exec
         //check target lane and accelerate during lane change if safe to change lane
         //maintaince 30m from front car and 20m from back car
         if (lane_frontcar_s[ego_lane - 1] - ego_future_s > REAR_SAFE_DISTANCE) {
-
-            if (ego_future_s - lane_backcar_s[ego_lane - 1] > REAR_SAFE_DISTANCE - 10.0 ) {
+            if (ego_future_s - lane_backcar_s[ego_lane - 1] > REAR_SAFE_DISTANCE - 10.0) {
                 setLaneChangeTime();
                 ego_lane = ego_lane - 1;
             }
         }
-
     } else if (ego_state == RIGHT) {
-
         if (ref_v < SPEED_LIMIT && lane_frontcar_s[ego_lane] - ego_future_s > REAR_SAFE_DISTANCE) {
             if (ref_v < lane_speed[ego_lane + 1] - 5.0) {
-                ref_v += getSpeedChange();
+                ref_v += getSpeedChange(true);
             } else {
-                ref_v -= getSpeedChange();
+                ref_v += getSpeedChange(false);
             }
-        }
-            //else perform braking as per emergency or normal
-        else {
-
+        } else { //else perform braking as per emergency or normal
             ref_v -= .224;
             //perform emergency braking if front car future s and ego_future_s separation is less than 10
             if (lane_frontcar_s[ego_lane] - ego_future_s < 10) {
                 ref_v -= 2.0;
             }
         }
-
         //check target lane and accelerate during lane change if safe to change lane
         //maintaince 30m from front car and 20m from back car
         if (lane_frontcar_s[ego_lane + 1] - ego_future_s > REAR_SAFE_DISTANCE) {
-
             if (ego_future_s - lane_backcar_s[ego_lane + 1] > REAR_SAFE_DISTANCE - 10.0) {
                 setLaneChangeTime();
                 ego_lane = ego_lane + 1;
@@ -425,7 +413,7 @@ void Car::update_state(const vector<double> &previous_path_x, const double &end_
     bool isEgoLaneSpeedLessThanIdealLaneSpeed = lane_speed[ego_lane] < lane_speed[ideal_lane];
 
     if (ego_lane != ideal_lane && isEgoLaneSpeedLessThanIdealLaneSpeed
-            && isLaneChangeJerkSafe()) {
+        && isLaneChangeJerkSafe()) {
         if (ego_lane < ideal_lane) {
             ego_state = RIGHT;
         } else {
