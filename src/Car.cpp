@@ -123,16 +123,16 @@ variable will also be changed once lane change is determined to be safe for exec
         cout << msg << getLastLaneChangeDiff() << endl;
     }
 
-    if (ego_state == STRAIGHT) {
+    bool isEmergencyBrake = lane_frontcar_s[ego_lane] - ego_future_s < 10;
+    //perform emergency breaking if front car future s and ego_future_s separation is less than 10m
+    if (isEmergencyBrake) {
+        ref_v -= 0.50;
+    } else if (ego_state == STRAIGHT) {
         //Code to maintain lane speed and sufficient separaton between ego and front car
         if ((ref_v + SPEED_MARGIN) < SPEED_LIMIT && lane_frontcar_s[ego_lane] - ego_future_s > FRONT_SAFE_DISTANCE) {
             ref_v += getSpeedChange(true);
         } else { // else decrease speed to maintain safe distance and speed
             ref_v += getSpeedChange(false);
-        }
-        //perform emergency breaking if front car future s and ego_future_s separation is less than 10m
-        if (lane_frontcar_s[ego_lane] - ego_future_s < 10) {
-            ref_v -= 2.0;
         }
     } else if (ego_state == LEFT) {
         //Code to maintain lane speed and sufficient separaton between ego and front car
@@ -146,10 +146,6 @@ variable will also be changed once lane change is determined to be safe for exec
             }
         } else { //else decrease speed to maintain safety distance and safe speed
             ref_v += getSpeedChange(false);
-            //perform emergency breaking if front car future s and ego_future_s separation is less than 10m
-            if (lane_frontcar_s[ego_lane] - ego_future_s < 10) {
-                ref_v -= 2.0;
-            }
         }
 
         //check target lane and accelerate during lane change if safe to change lane
@@ -168,11 +164,7 @@ variable will also be changed once lane change is determined to be safe for exec
                 ref_v += getSpeedChange(false);
             }
         } else { //else perform braking as per emergency or normal
-            ref_v -= .224;
-            //perform emergency braking if front car future s and ego_future_s separation is less than 10
-            if (lane_frontcar_s[ego_lane] - ego_future_s < 10) {
-                ref_v -= 2.0;
-            }
+            ref_v += getSpeedChange(false);
         }
         //check target lane and accelerate during lane change if safe to change lane
         //maintaince 30m from front car and 20m from back car
@@ -183,6 +175,10 @@ variable will also be changed once lane change is determined to be safe for exec
             }
         }
     }
+    if(ref_v > SPEED_LIMIT) {
+        ref_v = SPEED_LIMIT;
+    }
+
 
     /***********************
     Trajectory generation using ref_v set in earlier

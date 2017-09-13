@@ -22,6 +22,7 @@ private:
     const string STRAIGHT = "^";
     const string LEFT = "<";
     const string RIGHT = ">";
+    const string EMERGENCY_BRAKE = "STOP!";
 
     int ego_lane;
     time_t last_lane_change;
@@ -47,6 +48,7 @@ private:
     long getLastLaneChangeDiff();
     bool isLaneChangeJerkSafe();
     double getSpeedChange(bool increase);
+    double updateSpeed();
 
     string pad(double d);
     string pad(double d,int pad, int trim_right);
