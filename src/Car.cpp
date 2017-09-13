@@ -136,15 +136,6 @@ variable will also be changed once lane change is determined to be safe for exec
         ref_v += getSpeedChange(true);
 
     } else if (ego_state == LEFT) {
-        //Code to maintain lane speed and sufficient separaton between ego and front car
-        if (isCurrentSpeedLegal && lane_frontcar_s[ego_lane] - ego_future_s > REAR_SAFE_DISTANCE) {
-            //if Lane Change Left and velocity is lesser than current lane speed, check target lane speed and reduce speed
-            //to 5MPH slower than target lane speed to find opportunity to change lane
-            if (ref_v < lane_speed[ego_lane - 1] - 5.0) {
-                ref_v += getSpeedChange(true);
-            }
-        }
-
         //check target lane and accelerate during lane change if safe to change lane
         //maintaince 30m from front car and 20m from back car
         if (lane_frontcar_s[ego_lane - 1] - ego_future_s > REAR_SAFE_DISTANCE) {
@@ -154,11 +145,6 @@ variable will also be changed once lane change is determined to be safe for exec
             }
         }
     } else if (ego_state == RIGHT) {
-        if (isCurrentSpeedLegal && lane_frontcar_s[ego_lane] - ego_future_s > REAR_SAFE_DISTANCE) {
-            if (ref_v < lane_speed[ego_lane + 1] - 5.0) {
-                ref_v += getSpeedChange(true);
-            }
-        }
         //check target lane and accelerate during lane change if safe to change lane
         //maintaince 30m from front car and 20m from back car
         if (lane_frontcar_s[ego_lane + 1] - ego_future_s > REAR_SAFE_DISTANCE) {
