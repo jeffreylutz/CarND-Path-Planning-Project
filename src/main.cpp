@@ -709,7 +709,7 @@ int main() {
           // TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
 
           //Update ego with its latest position from simulator
-          ego.update_position(car_x, car_y, car_s, car_d, car_yaw, car_speed);
+            ego.update_position(car_x, car_y, car_s, car_yaw, car_speed);
 
           //ego has 3 states namely Keep Lane (KL), Lane Change Left (LCL) and Lane Change Right(LCR)
           //update its current preferred state based on current road situation

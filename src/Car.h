@@ -6,7 +6,7 @@
 #define PATH_PLANNING_CAR_H
 
 #include <vector>
-#include <time.h>
+#include <ctime>
 
 using namespace std;
 
@@ -18,8 +18,8 @@ private:
     const double MPS_TO_MPH = 2.237;  // m/s to mph factor
     const double OTHER_LANE_DISTANCE_MULTIPLIER = 1.5;
     const double EMERGENCY_BRAKE_DISTANCE = 10.0;
-    const double CAR_SAFE_DIST_FRONT = 30.0; // meters
-    const double CAR_SAFE_DIST_REAR = 20.0; //meters
+    const double CAR_SAFE_DIST_FRONT = 16.0; // meters
+    const double CAR_SAFE_DIST_REAR = 10.0; //meters
     const double SPEED_LIMIT = 49.95;// 49.5mph = 22.098m/s
     const double SPEED_CHANGE = 0.25;
     const string GO_STRAIGHT = "^";
@@ -46,7 +46,7 @@ private:
 
     double pi();
     double deg2rad(double deg);
-    double rad2deg(double rad);
+
     vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> maps_x, vector<double> maps_y);
     void setLaneChangeTime();
     long getLastLaneChangeDiff();
@@ -58,13 +58,12 @@ private:
     bool attemptRightLaneChange();
     bool attemptEitherLaneChange();
 
-    string pad(double d);
     string pad(double d,int pad, int trim_right);
 
 public:
     Car();
 
-    void update_position(double x, double y, double s, double d, double yaw, double speed);
+    void update_position(double x, double y, double s, double yaw, double speed);
 
     void update_state(const vector<double> &previous_path_x, const double &end_path_s,
                       const vector <vector<double>> &sensor_fusion);

@@ -23,17 +23,13 @@ Car::Car() {
     cout << "Autonomous Vehicle created at lane 1" << endl;
 }
 
-string Car::pad(double d) {
-    return pad(d, 6, 5);
-}
-
 string Car::pad(double d, int pad, int trim_right) {
     double dnew = round(d * 10.0) / 10.0;
     string val = " " + to_string(dnew);
     val = val.substr(0, val.length() - trim_right);
 
     while (val.length() <= pad) {
-        val = " " + val;
+        val = string(" ").append(val);
     }
     return val;
 }
@@ -41,8 +37,6 @@ string Car::pad(double d, int pad, int trim_right) {
 double Car::pi() { return M_PI; }
 
 double Car::deg2rad(double deg) { return deg * pi() / 180.0; }
-
-double Car::rad2deg(double rad) { return rad * 180.0 / pi(); }
 
 void Car::setLaneChangeTime() {
     time(&last_lane_change);
@@ -58,7 +52,7 @@ long Car::getLastLaneChangeDiff() {
     return now - last_lane_change;
 }
 
-void Car::update_position(double x, double y, double s, double d, double yaw, double speed) {
+void Car::update_position(double x, double y, double s, double yaw, double speed) {
     ego_x = x;
     ego_y = y;
     ego_s = s;
@@ -111,7 +105,7 @@ bool Car::attemptRightLaneChange() {
 }
 
 bool Car::attemptEitherLaneChange() {
-    return attemptLeftLaneChange() == false ? attemptRightLaneChange() : true;
+    return attemptLeftLaneChange() || attemptRightLaneChange();
 }
 
 vector<double> Car::getXY(double s, double d, vector<double> maps_s, vector<double> maps_x, vector<double> maps_y) {
@@ -121,7 +115,7 @@ vector<double> Car::getXY(double s, double d, vector<double> maps_s, vector<doub
         prev_wp++;
     }
 
-    int wp2 = (prev_wp + 1) % maps_x.size();
+    long wp2 = (prev_wp + 1) % maps_x.size();
 
     double heading = atan2((maps_y[wp2] - maps_y[prev_wp]), (maps_x[wp2] - maps_x[prev_wp]));
     // the x,y,s along the segment
@@ -149,7 +143,7 @@ variable will also be changed once lane change is determined to be safe for exec
     vector<double> next_x_vals;
     vector<double> next_y_vals;
     string ego_lane_str = ego_lane == 0 ? "Left  " : (ego_lane == 1 ? "Middle" : "Right ");
-    int prev_size = previous_path_x.size();
+    long prev_size = previous_path_x.size();
 
     bool hasSafeDistanceToFrontCar = abs(cars_dist_front[ego_lane]) > CAR_SAFE_DIST_FRONT;
 
@@ -162,7 +156,6 @@ variable will also be changed once lane change is determined to be safe for exec
 
     bool isEmergencyBrake = cars_dist_front[ego_lane] < EMERGENCY_BRAKE_DISTANCE;
     bool tooCloseToFrontCar = !hasSafeDistanceToFrontCar && ref_v > cars_speed_front[ego_lane];
-    bool isCurrentSpeedLegal = ref_v <= SPEED_LIMIT;
 
     string msg = ""
                  //+ "current lane/left/middle/right/steer/last_lane_change: "
@@ -172,10 +165,10 @@ variable will also be changed once lane change is determined to be safe for exec
                  + pad(cars_speed_front[1], 3, 7)
                  + pad(cars_speed_front[2], 3, 7)
                  + " - " + ego_state + " - "
-                 + (hasSafeDistanceToRearCarLeftLane == true && hasSafeDistanceToFrontCarLeftLane == true ? "L-" : "L*")
+                 + (hasSafeDistanceToRearCarLeftLane && hasSafeDistanceToFrontCarLeftLane ? "L-" : "L*")
                  + " "
-                 + (hasSafeDistanceToRearCarRightLane == true && hasSafeDistanceToFrontCarRightLane == true ? "R-"
-                                                                                                            : "R*");
+                 + (hasSafeDistanceToRearCarRightLane && hasSafeDistanceToFrontCarRightLane ? "R-"
+                                                                                            : "R*");
     if (last_msg != msg) {
         last_msg = msg;
         cout << msg
@@ -334,7 +327,7 @@ variable will also be changed once lane change is determined to be safe for exec
 
 void Car::update_state(const vector<double> &previous_path_x, const double &end_path_s,
                        const vector<vector<double>> &sensor_fusion) {
-    int prev_size = previous_path_x.size();
+    long prev_size = previous_path_x.size();
 
     //if previous planning was done, set ego_future_s to last known end_path_s point
     if (prev_size > 0) {
@@ -364,18 +357,14 @@ void Car::update_state(const vector<double> &previous_path_x, const double &end_
     * Information recorded for all 3 lanes include lane_speed, lane frontcar_s and lane_backcar_s.
     * Data format for each car is: [id, x, y, vx, vy, s, d].
     *************************/
-    bool clear = false;
-    for (int i = 0; i < sensor_fusion.size(); i++) {
-        double id = sensor_fusion[i][0];
-        double x = sensor_fusion[i][1];
-        double y = sensor_fusion[i][2];
-        double vx = sensor_fusion[i][3];
-        double vy = sensor_fusion[i][4];
-        double s = sensor_fusion[i][5];
-        double d = sensor_fusion[i][6];
+    for (const auto &i : sensor_fusion) {
+        double vx = i[3];
+        double vy = i[4];
+        double s = i[5];
+        double d = i[6];
         double speed = sqrt(vx * vx + vy * vy);
 
-        int lane_index;
+        int lane_index = 0;
         if (d < 4) {
             lane_index = 0;
         } else if (d < 8) {
@@ -416,11 +405,9 @@ void Car::update_state(const vector<double> &previous_path_x, const double &end_
     /***********************
     Step 2
     Use previously found closest car position and speed in all 3 lanes to determine ego's preferred state
-    ego's aim is to complete the circuit safely and in the shortest possible time
     *************************/
-
     //ideal_lane is the lane that allows highest travel speed
-    int ideal_lane = distance(cars_speed_front.begin(), max_element(cars_speed_front.begin(), cars_speed_front.end()));
+    long ideal_lane = distance(cars_speed_front.begin(), max_element(cars_speed_front.begin(), cars_speed_front.end()));
 
     // The default is to continue straight in existing lane
     ego_state = GO_STRAIGHT;
@@ -438,6 +425,13 @@ void Car::update_state(const vector<double> &previous_path_x, const double &end_
         } else {
             ego_state = GO_LEFT;
         }
+    }
+    if (ego_lane != 1 && cars_speed_front[1] == SPEED_LIMIT) {
+        // switch to middle lane if not already in middle lane
+        // and middle lane is full speed
+        // reasoning:  Favor middle lane because if need to switch,
+        //             have two other lanes as options.  Improve travel time.
+        ego_state = ego_lane == 0 ? GO_RIGHT : GO_LEFT;
     }
 }
 
