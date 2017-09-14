@@ -13,7 +13,7 @@ using namespace std;
 class Car {
 
 private:
-    const int WAIT_TIME_BETWEEN_LANE_CHANGES = 5; // seconds between lane change to minimize jerk
+    const int WAIT_TIME_BETWEEN_LANE_CHANGES = 3; // seconds between lane change to minimize jerk
     const double CURRENT_LANE_DISTANCE_MULTIPLIER = 1.10;
     const double MPS_TO_MPH = 2.237;  // m/s to mph factor
     const double OTHER_LANE_DISTANCE_MULTIPLIER = 1.5;
@@ -22,24 +22,24 @@ private:
     const double CAR_SAFE_DIST_REAR = 20.0; //meters
     const double SPEED_LIMIT = 49.95;// 49.5mph = 22.098m/s
     const double SPEED_CHANGE = 0.25;
-    const string STRAIGHT = "^";
-    const string LEFT = "<";
-    const string RIGHT = ">";
+    const string GO_STRAIGHT = "^";
+    const string GO_LEFT = "<";
+    const string GO_RIGHT = ">";
+    const string GO_EITHER = "-";
 
     int ego_lane;
     time_t last_lane_change;
     double ego_x;
     double ego_y;
     double ego_s;
-    double ego_d;
     double ego_yaw;
     double ego_speed;
     double ref_v;
     double ego_future_s;
     string ego_state;
-    vector<double> lane_speed;
-    vector<double> lane_frontcar_s;
-    vector<double> lane_backcar_s;
+    vector<double> cars_speed_front;
+    vector<double> cars_s_front;
+    vector<double> cars_s_rear;
     vector<double> cars_dist_front;
     vector<double> cars_dist_rear;
     string last_msg;
@@ -52,7 +52,11 @@ private:
     long getLastLaneChangeDiff();
     bool isLaneChangeJerkSafe();
     double getSpeedChange(bool increase);
-    double updateSpeed();
+    bool hasSafeDistanceToCarsLeftLane();
+    bool hasSafeDistanceToCarsRightLane();
+    bool attemptLeftLaneChange();
+    bool attemptRightLaneChange();
+    bool attemptEitherLaneChange();
 
     string pad(double d);
     string pad(double d,int pad, int trim_right);

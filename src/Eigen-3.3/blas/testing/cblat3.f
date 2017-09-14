@@ -725,7 +725,7 @@
       INTEGER            I, IA, IB, ICS, ICU, IM, IN, LAA, LBB, LCC,
      $                   LDA, LDAS, LDB, LDBS, LDC, LDCS, M, MS, N, NA,
      $                   NARGS, NC, NS
-      LOGICAL            CONJ, LEFT, NULL, RESET, SAME
+      LOGICAL            CONJ, GO_LEFT, NULL, RESET, SAME
       CHARACTER*1        SIDE, SIDES, UPLO, UPLOS
       CHARACTER*2        ICHS, ICHU
 *     .. Local Arrays ..
@@ -782,9 +782,9 @@
 *
             DO 80 ICS = 1, 2
                SIDE = ICHS( ICS: ICS )
-               LEFT = SIDE.EQ.'L'
+               GO_LEFT = SIDE.EQ.'L'
 *
-               IF( LEFT )THEN
+               IF( GO_LEFT )THEN
                   NA = M
                ELSE
                   NA = N
@@ -902,7 +902,7 @@
 *
 *                          Check the result.
 *
-                           IF( LEFT )THEN
+                           IF( GO_LEFT )THEN
                               CALL CMMCH( 'N', 'N', M, N, M, ALPHA, A,
      $                                    NMAX, B, NMAX, BETA, C, NMAX,
      $                                    CT, G, CC, LDC, EPS, ERR,
@@ -1003,7 +1003,7 @@
       INTEGER            I, IA, ICD, ICS, ICT, ICU, IM, IN, J, LAA, LBB,
      $                   LDA, LDAS, LDB, LDBS, M, MS, N, NA, NARGS, NC,
      $                   NS
-      LOGICAL            LEFT, NULL, RESET, SAME
+      LOGICAL            GO_LEFT, NULL, RESET, SAME
       CHARACTER*1        DIAG, DIAGS, SIDE, SIDES, TRANAS, TRANSA, UPLO,
      $                   UPLOS
       CHARACTER*2        ICHD, ICHS, ICHU
@@ -1054,8 +1054,8 @@
 *
             DO 120 ICS = 1, 2
                SIDE = ICHS( ICS: ICS )
-               LEFT = SIDE.EQ.'L'
-               IF( LEFT )THEN
+               GO_LEFT = SIDE.EQ.'L'
+               IF( GO_LEFT )THEN
                   NA = M
                ELSE
                   NA = N
@@ -1180,7 +1180,7 @@
 *
 *                                Check the result.
 *
-                                 IF( LEFT )THEN
+                                 IF( GO_LEFT )THEN
                                     CALL CMMCH( TRANSA, 'N', M, N, M,
      $                                          ALPHA, A, NMAX, B, NMAX,
      $                                          ZERO, C, NMAX, CT, G,
@@ -1207,7 +1207,7 @@
    60                               CONTINUE
    70                            CONTINUE
 *
-                                 IF( LEFT )THEN
+                                 IF( GO_LEFT )THEN
                                     CALL CMMCH( TRANSA, 'N', M, N, M,
      $                                          ONE, A, NMAX, C, NMAX,
      $                                          ZERO, B, NMAX, CT, G,

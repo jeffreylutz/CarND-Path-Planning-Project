@@ -13,12 +13,12 @@ Car::Car() {
     ego_lane = 1;
     last_lane_change = 0;
     ref_v = 0.0;
-    lane_speed = {SPEED_LIMIT, SPEED_LIMIT, SPEED_LIMIT};
-    lane_frontcar_s = {numeric_limits<double>::max(), numeric_limits<double>::max(), numeric_limits<double>::max()};
-    lane_backcar_s = {numeric_limits<double>::min(), numeric_limits<double>::min(), numeric_limits<double>::min()};
+    cars_speed_front = {SPEED_LIMIT, SPEED_LIMIT, SPEED_LIMIT};
+    cars_s_front = {numeric_limits<double>::max(), numeric_limits<double>::max(), numeric_limits<double>::max()};
+    cars_s_rear = {numeric_limits<double>::min(), numeric_limits<double>::min(), numeric_limits<double>::min()};
     cars_dist_front = {numeric_limits<double>::max(), numeric_limits<double>::max(), numeric_limits<double>::max()};
     cars_dist_rear = {numeric_limits<double>::max(), numeric_limits<double>::max(), numeric_limits<double>::max()};
-    ego_state = STRAIGHT;
+    ego_state = GO_STRAIGHT;
     setLaneChangeTime();
     cout << "Autonomous Vehicle created at lane 1" << endl;
 }
@@ -62,7 +62,6 @@ void Car::update_position(double x, double y, double s, double d, double yaw, do
     ego_x = x;
     ego_y = y;
     ego_s = s;
-    ego_d = d;
     ego_yaw = yaw;
     ego_speed = speed;
 }
@@ -75,6 +74,44 @@ double Car::getSpeedChange(bool increase) {
         return SPEED_CHANGE;
     }
     return SPEED_LIMIT - ego_speed;
+}
+
+bool Car::hasSafeDistanceToCarsLeftLane() {
+    return (ego_lane == 0 ? false : cars_dist_rear[ego_lane - 1] > CAR_SAFE_DIST_REAR)
+           &&
+           (ego_lane == 0 ? false : cars_dist_front[ego_lane - 1] > CAR_SAFE_DIST_FRONT);
+}
+
+bool Car::hasSafeDistanceToCarsRightLane() {
+    return (ego_lane == 2 ? false : cars_dist_rear[ego_lane + 1] > CAR_SAFE_DIST_REAR)
+           &&
+           (ego_lane == 2 ? false : cars_dist_front[ego_lane + 1] > CAR_SAFE_DIST_FRONT);
+}
+
+bool Car::attemptLeftLaneChange() {
+    if (hasSafeDistanceToCarsLeftLane()) {
+        setLaneChangeTime();
+        ego_lane = ego_state == GO_LEFT ? ego_lane - 1 : ego_lane + 1;
+        cout << "Left lane change made" << endl;
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool Car::attemptRightLaneChange() {
+    if (hasSafeDistanceToCarsRightLane()) {
+        setLaneChangeTime();
+        ego_lane = ego_state == GO_LEFT ? ego_lane - 1 : ego_lane + 1;
+        cout << "Right lane change made" << endl;
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool Car::attemptEitherLaneChange() {
+    return attemptLeftLaneChange() == false ? attemptRightLaneChange() : true;
 }
 
 vector<double> Car::getXY(double s, double d, vector<double> maps_s, vector<double> maps_x, vector<double> maps_y) {
@@ -124,24 +161,24 @@ variable will also be changed once lane change is determined to be safe for exec
     bool hasSafeDistanceToRearCarRightLane = ego_lane == 2 ? false : cars_dist_rear[ego_lane + 1] > CAR_SAFE_DIST_REAR;
 
     bool isEmergencyBrake = cars_dist_front[ego_lane] < EMERGENCY_BRAKE_DISTANCE;
-    bool tooCloseToFrontCar = !hasSafeDistanceToFrontCar && ref_v > lane_speed[ego_lane];
+    bool tooCloseToFrontCar = !hasSafeDistanceToFrontCar && ref_v > cars_speed_front[ego_lane];
     bool isCurrentSpeedLegal = ref_v <= SPEED_LIMIT;
 
-    string msg = "current lane/left/middle/right/steer/last_lane_change: "
+    string msg = ""
+                 //+ "current lane/left/middle/right/steer/last_lane_change: "
                  + ego_lane_str + " -"
-                 + pad(lane_speed[0], 3, 7) + pad(lane_speed[1], 3, 7)
-                 + pad(lane_speed[2], 3, 7) + " - " + ego_state + " - "
-            + (hasSafeDistanceToRearCarLeftLane == true && hasSafeDistanceToFrontCarLeftLane == true ? "L-" : "L*")
-            + " "
-            + (hasSafeDistanceToRearCarRightLane == true && hasSafeDistanceToFrontCarRightLane == true ? "R-" : "R*")
-    ;
+                 + pad(cars_dist_front[ego_lane], 3, 7)
+                 + pad(cars_speed_front[0], 3, 7)
+                 + pad(cars_speed_front[1], 3, 7)
+                 + pad(cars_speed_front[2], 3, 7)
+                 + " - " + ego_state + " - "
+                 + (hasSafeDistanceToRearCarLeftLane == true && hasSafeDistanceToFrontCarLeftLane == true ? "L-" : "L*")
+                 + " "
+                 + (hasSafeDistanceToRearCarRightLane == true && hasSafeDistanceToFrontCarRightLane == true ? "R-"
+                                                                                                            : "R*");
     if (last_msg != msg) {
         last_msg = msg;
         cout << msg
-//             << " "
-//             << (hasSafeDistanceToRearCarLeftLane == true && hasSafeDistanceToFrontCarLeftLane == true ? "L-" : "L*")
-//             << " "
-//             << (hasSafeDistanceToRearCarRightLane == true && hasSafeDistanceToFrontCarRightLane == true ? "R-" : "R*")
              << " " << getLastLaneChangeDiff()
              << endl;
     }
@@ -155,18 +192,12 @@ variable will also be changed once lane change is determined to be safe for exec
         ref_v = SPEED_LIMIT;
     }
     // Make steering decision independent to speed control decision
-    if (ego_state == LEFT) {
-        if (hasSafeDistanceToFrontCarLeftLane && hasSafeDistanceToRearCarLeftLane) {
-            setLaneChangeTime();
-            ego_lane = ego_state == LEFT ? ego_lane - 1 : ego_lane + 1;
-            cout << "Left lane change made" << endl;
-        }
-    } else if (ego_state == RIGHT) {
-        if (hasSafeDistanceToFrontCarRightLane && hasSafeDistanceToRearCarRightLane) {
-            setLaneChangeTime();
-            ego_lane = ego_state == LEFT ? ego_lane - 1 : ego_lane + 1;
-            cout << "Right lane change made" << endl;
-        }
+    if (ego_state == GO_EITHER) {
+        attemptEitherLaneChange();
+    } else if (ego_state == GO_LEFT) {
+        attemptLeftLaneChange();
+    } else if (ego_state == GO_RIGHT) {
+        attemptRightLaneChange();
     }
     /***********************
     Trajectory generation using ref_v set in earlier
@@ -314,12 +345,12 @@ void Car::update_state(const vector<double> &previous_path_x, const double &end_
         ego_future_s = ego_s;
     }
 
-    //Reset lane_speed to max road speed limit
-    lane_speed = {SPEED_LIMIT, SPEED_LIMIT, SPEED_LIMIT};
+    //Reset cars_speed_front to max road speed limit
+    cars_speed_front = {SPEED_LIMIT, SPEED_LIMIT, SPEED_LIMIT};
     //Reset  to max double
-    lane_frontcar_s = {numeric_limits<double>::max(), numeric_limits<double>::max(), numeric_limits<double>::max()};
-    //Reset lane_backcar_s to min double
-    lane_backcar_s = {numeric_limits<double>::min(), numeric_limits<double>::min(), numeric_limits<double>::min()};
+    cars_s_front = {numeric_limits<double>::max(), numeric_limits<double>::max(), numeric_limits<double>::max()};
+    //Reset cars_s_rear to min double
+    cars_s_rear = {numeric_limits<double>::min(), numeric_limits<double>::min(), numeric_limits<double>::min()};
 
     // Reset cars_dist_front and cars_dist_rear to max double
     cars_dist_front = {numeric_limits<double>::max(), numeric_limits<double>::max(), numeric_limits<double>::max()};
@@ -353,10 +384,10 @@ void Car::update_state(const vector<double> &previous_path_x, const double &end_
             lane_index = 2;
         }
         double s_future = s + ((double) prev_size * .02 * speed);
-        double car_dist_present = abs(lane_frontcar_s[lane_index] - ego_future_s);
+        double car_dist_present = abs(cars_s_front[lane_index] - ego_future_s);
         double car_dist_future = abs(s_future - ego_future_s);
         bool car_is_in_front = s_future > ego_future_s;
-        double s_diff_rear = abs(lane_backcar_s[lane_index] - ego_future_s);
+        double s_diff_rear = abs(cars_s_rear[lane_index] - ego_future_s);
 
         //if vehicle is in front of ego and lesser than 50km/hr at final projected position record
         //target vehicle s location and speed. Only vehicle in front and closest to ego is recorded
@@ -366,8 +397,8 @@ void Car::update_state(const vector<double> &previous_path_x, const double &end_
             if (car_dist_future < (CAR_SAFE_DIST_FRONT * distance_multiplier)
                 && car_dist_future < car_dist_present
                     ) {
-                lane_speed[lane_index] = speed * MPS_TO_MPH;
-                lane_frontcar_s[lane_index] = s_future;
+                cars_speed_front[lane_index] = speed * MPS_TO_MPH;
+                cars_s_front[lane_index] = s_future;
                 cars_dist_front[lane_index] = car_dist_future;
             }
         } else {
@@ -376,16 +407,11 @@ void Car::update_state(const vector<double> &previous_path_x, const double &end_
             if (car_dist_future < CAR_SAFE_DIST_REAR
                 && car_dist_future < s_diff_rear
                     ) {
-                lane_backcar_s[lane_index] = s_future;
+                cars_s_rear[lane_index] = s_future;
                 cars_dist_rear[lane_index] = car_dist_future;
             }
         }
     }
-//    cout << "FL - FM - FR - BL - BM - BR "
-//         << pad(cars_dist_front[0],3,7) << " " << pad(cars_dist_front[1],3,7) << " " << pad(cars_dist_front[2],3,7) << " "
-//         << pad(cars_dist_rear[0],3,7) << " " << pad(cars_dist_rear[1],3,7) << " " << pad(cars_dist_rear[2],3,7) << " "
-//         << endl;
-//    if (clear) { cout << endl; }
 
     /***********************
     Step 2
@@ -394,18 +420,23 @@ void Car::update_state(const vector<double> &previous_path_x, const double &end_
     *************************/
 
     //ideal_lane is the lane that allows highest travel speed
-    int ideal_lane = distance(lane_speed.begin(), max_element(lane_speed.begin(), lane_speed.end()));
+    int ideal_lane = distance(cars_speed_front.begin(), max_element(cars_speed_front.begin(), cars_speed_front.end()));
 
     // The default is to continue straight in existing lane
-    ego_state = STRAIGHT;
-    bool isEgoLaneSpeedLessThanIdealLaneSpeed = lane_speed[ego_lane] < lane_speed[ideal_lane];
+    ego_state = GO_STRAIGHT;
+    bool isEgoLaneSpeedLessThanIdealLaneSpeed = cars_speed_front[ego_lane] < cars_speed_front[ideal_lane];
 
-    if (ego_lane != ideal_lane && isEgoLaneSpeedLessThanIdealLaneSpeed
+    double lane_speed_left = ego_lane == 0 ? 0.0 : cars_speed_front[ego_lane - 1];
+    double lane_speed_right = ego_lane == 2 ? 0.0 : cars_speed_front[ego_lane + 1];
+    if (ego_lane != ideal_lane
+        && isEgoLaneSpeedLessThanIdealLaneSpeed
         && isLaneChangeJerkSafe()) {
-        if (ego_lane < ideal_lane) {
-            ego_state = RIGHT;
+        if (lane_speed_left == lane_speed_right) {
+            ego_state = GO_EITHER;
+        } else if (lane_speed_right > lane_speed_left) {
+            ego_state = GO_RIGHT;
         } else {
-            ego_state = LEFT;
+            ego_state = GO_LEFT;
         }
     }
 }
