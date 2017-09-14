@@ -14,17 +14,17 @@ class Car {
 
 private:
     const int WAIT_TIME_BETWEEN_LANE_CHANGES = 5; // seconds between lane change to minimize jerk
-    const double CURRENT_LANE_DISTANCE_MULTIPLIER = 0.75;
+    const double CURRENT_LANE_DISTANCE_MULTIPLIER = 1.10;
+    const double MPS_TO_MPH = 2.237;  // m/s to mph factor
     const double OTHER_LANE_DISTANCE_MULTIPLIER = 1.5;
     const double EMERGENCY_BRAKE_DISTANCE = 10.0;
-    const double FRONT_SAFE_DISTANCE = 30.0; // meters
-    const double REAR_SAFE_DISTANCE = 20.0; //meters
-    const double SPEED_LIMIT = 49.75;// 49.5mph = 22.098m/s
+    const double CAR_SAFE_DIST_FRONT = 30.0; // meters
+    const double CAR_SAFE_DIST_REAR = 20.0; //meters
+    const double SPEED_LIMIT = 49.95;// 49.5mph = 22.098m/s
     const double SPEED_CHANGE = 0.25;
     const string STRAIGHT = "^";
     const string LEFT = "<";
     const string RIGHT = ">";
-    const string EMERGENCY_BRAKE = "STOP!";
 
     int ego_lane;
     time_t last_lane_change;
@@ -40,6 +40,8 @@ private:
     vector<double> lane_speed;
     vector<double> lane_frontcar_s;
     vector<double> lane_backcar_s;
+    vector<double> cars_dist_front;
+    vector<double> cars_dist_rear;
     string last_msg;
 
     double pi();

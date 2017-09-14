@@ -163,7 +163,7 @@ vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> m
 //  double ego_d;
 //  double ego_yaw;
 //  double ego_speed;
-//  double REAR_SAFE_DISTANCE; //meters
+//  double CAR_SAFE_DIST_REAR; //meters
 //  double ref_v;
 //  double SPEED_LIMIT;// 49.5mph = 22.098m/s
 //  double ego_future_s;
@@ -176,7 +176,7 @@ vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> m
 //
 //  Car() {
 //    ego_lane = 1;
-//    REAR_SAFE_DISTANCE = 25.0;
+//    CAR_SAFE_DIST_REAR = 25.0;
 //    ref_v = 0.0;
 //    SPEED_LIMIT = 49.5;
 //    lane_speed = {SPEED_LIMIT, SPEED_LIMIT, SPEED_LIMIT};
@@ -257,9 +257,9 @@ vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> m
 //          }
 //
 //        }
-//          //if vehicle is behind ego and lesser than REAR_SAFE_DISTANCE at final projected position record
+//          //if vehicle is behind ego and lesser than CAR_SAFE_DIST_REAR at final projected position record
 //          //target vehicle s location. Only vehicle behind and closest to ego is recorded.
-//        else if ((check_car_future_s < ego_future_s) && (abs(check_car_future_s - ego_future_s) < REAR_SAFE_DISTANCE)) {
+//        else if ((check_car_future_s < ego_future_s) && (abs(check_car_future_s - ego_future_s) < CAR_SAFE_DIST_REAR)) {
 //
 //          if (abs(check_car_future_s - ego_future_s) < abs(lane_backcar_s[0] - ego_future_s)) {
 //
@@ -286,9 +286,9 @@ vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> m
 //            lane_frontcar_s[1] = check_car_future_s;
 //          }
 //        }
-//          //if vehicle is behind ego and lesser than REAR_SAFE_DISTANCE at final projected position record
+//          //if vehicle is behind ego and lesser than CAR_SAFE_DIST_REAR at final projected position record
 //          //target vehicle s location. Only vehicle behind and closest to ego is recorded.
-//        else if ((check_car_future_s < ego_future_s) && (abs(check_car_future_s - ego_future_s) < REAR_SAFE_DISTANCE)) {
+//        else if ((check_car_future_s < ego_future_s) && (abs(check_car_future_s - ego_future_s) < CAR_SAFE_DIST_REAR)) {
 //          if (abs(check_car_future_s - ego_future_s) < abs(lane_backcar_s[1] - ego_future_s)) {
 //
 //            lane_backcar_s[1] = check_car_future_s;
@@ -313,9 +313,9 @@ vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> m
 //            lane_frontcar_s[2] = check_car_future_s;
 //          }
 //        }
-//          //if vehicle is behind ego and lesser than REAR_SAFE_DISTANCE at final projected position record
+//          //if vehicle is behind ego and lesser than CAR_SAFE_DIST_REAR at final projected position record
 //          //target vehicle s location. Only vehicle behind and closest to ego is recorded.
-//        else if ((check_car_future_s < ego_future_s) && (abs(check_car_future_s - ego_future_s) < REAR_SAFE_DISTANCE)) {
+//        else if ((check_car_future_s < ego_future_s) && (abs(check_car_future_s - ego_future_s) < CAR_SAFE_DIST_REAR)) {
 //          if (abs(check_car_future_s - ego_future_s) < abs(lane_backcar_s[2] - ego_future_s)) {
 //
 //            lane_backcar_s[2] = check_car_future_s;
@@ -402,7 +402,7 @@ vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> m
 //    if (ego_state == "KL") {
 //
 //      //Code to maintain lane speed and sufficient separaton between ego and front car
-//      if (ref_v < SPEED_LIMIT && lane_frontcar_s[ego_lane] - ego_future_s > REAR_SAFE_DISTANCE) {
+//      if (ref_v < SPEED_LIMIT && lane_frontcar_s[ego_lane] - ego_future_s > CAR_SAFE_DIST_REAR) {
 //
 //        ref_v += .224;
 //      }
@@ -421,7 +421,7 @@ vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> m
 //    } else if (ego_state == "LCL") {
 //
 //      //Code to maintain lane speed and sufficient separaton between ego and front car
-//      if (ref_v < SPEED_LIMIT && lane_frontcar_s[ego_lane] - ego_future_s > REAR_SAFE_DISTANCE) {
+//      if (ref_v < SPEED_LIMIT && lane_frontcar_s[ego_lane] - ego_future_s > CAR_SAFE_DIST_REAR) {
 //
 //        //if Lane Change Left and velocity is lesser than current lane speed, check target lane speed and reduce speed
 //        //to 5MPH slower than target lane speed to find opportunity to change lane
@@ -445,9 +445,9 @@ vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> m
 //
 //      //check target lane and accelerate during lane change if safe to change lane
 //      //maintaince 30m from front car and 20m from back car
-//      if (lane_frontcar_s[ego_lane - 1] - ego_future_s > REAR_SAFE_DISTANCE) {
+//      if (lane_frontcar_s[ego_lane - 1] - ego_future_s > CAR_SAFE_DIST_REAR) {
 //
-//        if (ego_future_s - lane_backcar_s[ego_lane - 1] > REAR_SAFE_DISTANCE - 10.0) {
+//        if (ego_future_s - lane_backcar_s[ego_lane - 1] > CAR_SAFE_DIST_REAR - 10.0) {
 //
 //          ego_lane = ego_lane - 1;
 //
@@ -457,7 +457,7 @@ vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> m
 //
 //    } else if (ego_state == "LCR") {
 //
-//      if (ref_v < SPEED_LIMIT && lane_frontcar_s[ego_lane] - ego_future_s > REAR_SAFE_DISTANCE) {
+//      if (ref_v < SPEED_LIMIT && lane_frontcar_s[ego_lane] - ego_future_s > CAR_SAFE_DIST_REAR) {
 //
 //        if (ref_v < lane_speed[ego_lane + 1] - 5.0) {
 //          ref_v += .224;
@@ -477,9 +477,9 @@ vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> m
 //
 //      //check target lane and accelerate during lane change if safe to change lane
 //      //maintaince 30m from front car and 20m from back car
-//      if (lane_frontcar_s[ego_lane + 1] - ego_future_s > REAR_SAFE_DISTANCE) {
+//      if (lane_frontcar_s[ego_lane + 1] - ego_future_s > CAR_SAFE_DIST_REAR) {
 //
-//        if (ego_future_s - lane_backcar_s[ego_lane + 1] > REAR_SAFE_DISTANCE - 10.0) {
+//        if (ego_future_s - lane_backcar_s[ego_lane + 1] > CAR_SAFE_DIST_REAR - 10.0) {
 //
 //          ego_lane = ego_lane + 1;
 //
