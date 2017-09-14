@@ -52,14 +52,6 @@ long Car::getLastLaneChangeDiff() {
     return now - last_lane_change;
 }
 
-void Car::update_position(double x, double y, double s, double yaw, double speed) {
-    ego_x = x;
-    ego_y = y;
-    ego_s = s;
-    ego_yaw = yaw;
-    ego_speed = speed;
-}
-
 double Car::getSpeedChange(bool increase) {
     if (!increase) {
         return -1.0 * SPEED_CHANGE;
@@ -132,14 +124,127 @@ vector<double> Car::getXY(double s, double d, vector<double> maps_s, vector<doub
     return {x, y};
 }
 
+void Car::update_position(double x, double y, double s, double yaw, double speed) {
+    ego_x = x;
+    ego_y = y;
+    ego_s = s;
+    ego_yaw = yaw;
+    ego_speed = speed;
+}
+
+void Car::update_state(const vector<double> &previous_path_x, const double &end_path_s,
+                       const vector<vector<double>> &sensor_fusion) {
+    long prev_size = previous_path_x.size();
+
+    //if previous planning was done, set ego_future_s to last known end_path_s point
+    if (prev_size > 0) {
+        ego_future_s = end_path_s;
+    }
+        //else set ego_future_s to current ego_s position
+    else {
+        ego_future_s = ego_s;
+    }
+
+    //Reset cars_speed_front to max road speed limit
+    cars_speed_front = {SPEED_LIMIT, SPEED_LIMIT, SPEED_LIMIT};
+    //Reset  to max double
+    cars_s_front = {numeric_limits<double>::max(), numeric_limits<double>::max(), numeric_limits<double>::max()};
+    //Reset cars_s_rear to min double
+    cars_s_rear = {numeric_limits<double>::min(), numeric_limits<double>::min(), numeric_limits<double>::min()};
+
+    // Reset cars_dist_front and cars_dist_rear to max double
+    cars_dist_front = {numeric_limits<double>::max(), numeric_limits<double>::max(), numeric_limits<double>::max()};
+    cars_dist_rear = {numeric_limits<double>::max(), numeric_limits<double>::max(), numeric_limits<double>::max()};
+
+    /***********************
+    Step 1
+    Iterate through all vehicles in all lanes and find vehicle that is closest (in front and behind) to ego
+    to determine lane speed
+
+    * Information recorded for all 3 lanes include lane_speed, lane frontcar_s and lane_backcar_s.
+    * Data format for each car is: [id, x, y, vx, vy, s, d].
+    *************************/
+    for (const auto &i : sensor_fusion) {
+        double vx = i[3];
+        double vy = i[4];
+        double s = i[5];
+        double d = i[6];
+        double speed = sqrt(vx * vx + vy * vy);
+
+        int lane_index = 0;
+        if (d < 4) {
+            lane_index = 0;
+        } else if (d < 8) {
+            lane_index = 1;
+        } else if (d < 12) {
+            lane_index = 2;
+        }
+        double s_future = s + ((double) prev_size * .02 * speed);
+        double car_dist_present = abs(cars_s_front[lane_index] - ego_future_s);
+        double car_dist_future = abs(s_future - ego_future_s);
+        bool car_is_in_front = s_future > ego_future_s;
+        double s_diff_rear = abs(cars_s_rear[lane_index] - ego_future_s);
+
+        //if vehicle is in front of ego and lesser than 50km/hr at final projected position record
+        //target vehicle s location and speed. Only vehicle in front and closest to ego is recorded
+        if (car_is_in_front) {
+            double distance_multiplier = (ego_lane == lane_index ? CURRENT_LANE_DISTANCE_MULTIPLIER
+                                                                 : OTHER_LANE_DISTANCE_MULTIPLIER);
+            if (car_dist_future < (CAR_SAFE_DIST_FRONT * distance_multiplier)
+                && car_dist_future < car_dist_present
+                    ) {
+                cars_speed_front[lane_index] = speed * MPS_TO_MPH;
+                cars_s_front[lane_index] = s_future;
+                cars_dist_front[lane_index] = car_dist_future;
+            }
+        } else {
+            //if vehicle is behind ego and lesser than CAR_SAFE_DIST_REAR at final projected position record
+            //target vehicle s location. Only vehicle behind and closest to ego is recorded.
+            if (car_dist_future < CAR_SAFE_DIST_REAR
+                && car_dist_future < s_diff_rear
+                    ) {
+                cars_s_rear[lane_index] = s_future;
+                cars_dist_rear[lane_index] = car_dist_future;
+            }
+        }
+    }
+
+    /***********************
+    Step 2
+    Use previously found closest car position and speed in all 3 lanes to determine ego's preferred state
+    *************************/
+    //ideal_lane is the lane that allows highest travel speed
+    long ideal_lane = distance(cars_speed_front.begin(), max_element(cars_speed_front.begin(), cars_speed_front.end()));
+
+    // The default is to continue straight in existing lane
+    ego_state = GO_STRAIGHT;
+    bool isEgoLaneSpeedLessThanIdealLaneSpeed = cars_speed_front[ego_lane] < cars_speed_front[ideal_lane];
+
+    double lane_speed_left = ego_lane == 0 ? 0.0 : cars_speed_front[ego_lane - 1];
+    double lane_speed_right = ego_lane == 2 ? 0.0 : cars_speed_front[ego_lane + 1];
+    if (ego_lane != ideal_lane
+        && isEgoLaneSpeedLessThanIdealLaneSpeed
+        && isLaneChangeJerkSafe()) {
+        if (lane_speed_left == lane_speed_right) {
+            ego_state = GO_EITHER;
+        } else if (lane_speed_right > lane_speed_left) {
+            ego_state = GO_RIGHT;
+        } else {
+            ego_state = GO_LEFT;
+        }
+    }
+    if (ego_lane != 1 && cars_speed_front[1] == SPEED_LIMIT) {
+        // switch to middle lane if not already in middle lane
+        // and middle lane is full speed
+        // reasoning:  Favor middle lane because if need to switch,
+        //             have two other lanes as options.  Improve travel time.
+        ego_state = ego_lane == 0 ? GO_RIGHT : GO_LEFT;
+    }
+}
+
 vector<vector<double>> Car::realize_state(const vector<double> &previous_path_x, const vector<double> &previous_path_y,
                                           const vector<double> &map_waypoints_x, const vector<double> &map_waypoints_y,
                                           const vector<double> &map_waypoints_s) {
-    /***********************
-Based on individual state and the objectives of the state, adjust ref_v so as to achieve the state safely. ego_lane
-variable will also be changed once lane change is determined to be safe for execution.
-*************************/
-
     vector<double> next_x_vals;
     vector<double> next_y_vals;
     string ego_lane_str = ego_lane == 0 ? "Left  " : (ego_lane == 1 ? "Middle" : "Right ");
@@ -171,13 +276,18 @@ variable will also be changed once lane change is determined to be safe for exec
                                                                                             : "R*");
     if (last_msg != msg) {
         last_msg = msg;
+        if (banner_counter > 20) {
+            cout << "current lane - cur lane dist - left v - middle v - right v - steer - left lane clear - right lane clear - time since last lane change: " << endl;
+            banner_counter = 0;
+        }
+        banner_counter++;
         cout << msg
              << " " << getLastLaneChangeDiff()
              << endl;
     }
     //Make speed control decision independent of steering decision
     if (isEmergencyBrake) {
-        ref_v -= SPEED_CHANGE;
+        ref_v -= SPEED_CHANGE * 2.0;
     } else {
         ref_v += getSpeedChange(!tooCloseToFrontCar);
     }
@@ -324,115 +434,3 @@ variable will also be changed once lane change is determined to be safe for exec
     return {next_x_vals, next_y_vals};
 
 }
-
-void Car::update_state(const vector<double> &previous_path_x, const double &end_path_s,
-                       const vector<vector<double>> &sensor_fusion) {
-    long prev_size = previous_path_x.size();
-
-    //if previous planning was done, set ego_future_s to last known end_path_s point
-    if (prev_size > 0) {
-        ego_future_s = end_path_s;
-    }
-        //else set ego_future_s to current ego_s position
-    else {
-        ego_future_s = ego_s;
-    }
-
-    //Reset cars_speed_front to max road speed limit
-    cars_speed_front = {SPEED_LIMIT, SPEED_LIMIT, SPEED_LIMIT};
-    //Reset  to max double
-    cars_s_front = {numeric_limits<double>::max(), numeric_limits<double>::max(), numeric_limits<double>::max()};
-    //Reset cars_s_rear to min double
-    cars_s_rear = {numeric_limits<double>::min(), numeric_limits<double>::min(), numeric_limits<double>::min()};
-
-    // Reset cars_dist_front and cars_dist_rear to max double
-    cars_dist_front = {numeric_limits<double>::max(), numeric_limits<double>::max(), numeric_limits<double>::max()};
-    cars_dist_rear = {numeric_limits<double>::max(), numeric_limits<double>::max(), numeric_limits<double>::max()};
-
-    /***********************
-    Step 1
-    Iterate through all vehicles in all lanes and find vehicle that is closest (in front and behind) to ego
-    to determine lane speed
-
-    * Information recorded for all 3 lanes include lane_speed, lane frontcar_s and lane_backcar_s.
-    * Data format for each car is: [id, x, y, vx, vy, s, d].
-    *************************/
-    for (const auto &i : sensor_fusion) {
-        double vx = i[3];
-        double vy = i[4];
-        double s = i[5];
-        double d = i[6];
-        double speed = sqrt(vx * vx + vy * vy);
-
-        int lane_index = 0;
-        if (d < 4) {
-            lane_index = 0;
-        } else if (d < 8) {
-            lane_index = 1;
-        } else if (d < 12) {
-            lane_index = 2;
-        }
-        double s_future = s + ((double) prev_size * .02 * speed);
-        double car_dist_present = abs(cars_s_front[lane_index] - ego_future_s);
-        double car_dist_future = abs(s_future - ego_future_s);
-        bool car_is_in_front = s_future > ego_future_s;
-        double s_diff_rear = abs(cars_s_rear[lane_index] - ego_future_s);
-
-        //if vehicle is in front of ego and lesser than 50km/hr at final projected position record
-        //target vehicle s location and speed. Only vehicle in front and closest to ego is recorded
-        if (car_is_in_front) {
-            double distance_multiplier = (ego_lane == lane_index ? CURRENT_LANE_DISTANCE_MULTIPLIER
-                                                                 : OTHER_LANE_DISTANCE_MULTIPLIER);
-            if (car_dist_future < (CAR_SAFE_DIST_FRONT * distance_multiplier)
-                && car_dist_future < car_dist_present
-                    ) {
-                cars_speed_front[lane_index] = speed * MPS_TO_MPH;
-                cars_s_front[lane_index] = s_future;
-                cars_dist_front[lane_index] = car_dist_future;
-            }
-        } else {
-            //if vehicle is behind ego and lesser than CAR_SAFE_DIST_REAR at final projected position record
-            //target vehicle s location. Only vehicle behind and closest to ego is recorded.
-            if (car_dist_future < CAR_SAFE_DIST_REAR
-                && car_dist_future < s_diff_rear
-                    ) {
-                cars_s_rear[lane_index] = s_future;
-                cars_dist_rear[lane_index] = car_dist_future;
-            }
-        }
-    }
-
-    /***********************
-    Step 2
-    Use previously found closest car position and speed in all 3 lanes to determine ego's preferred state
-    *************************/
-    //ideal_lane is the lane that allows highest travel speed
-    long ideal_lane = distance(cars_speed_front.begin(), max_element(cars_speed_front.begin(), cars_speed_front.end()));
-
-    // The default is to continue straight in existing lane
-    ego_state = GO_STRAIGHT;
-    bool isEgoLaneSpeedLessThanIdealLaneSpeed = cars_speed_front[ego_lane] < cars_speed_front[ideal_lane];
-
-    double lane_speed_left = ego_lane == 0 ? 0.0 : cars_speed_front[ego_lane - 1];
-    double lane_speed_right = ego_lane == 2 ? 0.0 : cars_speed_front[ego_lane + 1];
-    if (ego_lane != ideal_lane
-        && isEgoLaneSpeedLessThanIdealLaneSpeed
-        && isLaneChangeJerkSafe()) {
-        if (lane_speed_left == lane_speed_right) {
-            ego_state = GO_EITHER;
-        } else if (lane_speed_right > lane_speed_left) {
-            ego_state = GO_RIGHT;
-        } else {
-            ego_state = GO_LEFT;
-        }
-    }
-    if (ego_lane != 1 && cars_speed_front[1] == SPEED_LIMIT) {
-        // switch to middle lane if not already in middle lane
-        // and middle lane is full speed
-        // reasoning:  Favor middle lane because if need to switch,
-        //             have two other lanes as options.  Improve travel time.
-        ego_state = ego_lane == 0 ? GO_RIGHT : GO_LEFT;
-    }
-}
-
-
