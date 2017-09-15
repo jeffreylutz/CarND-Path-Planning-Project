@@ -21,7 +21,7 @@ private:
     const double OTHER_LANE_DISTANCE_MULTIPLIER = 1.5;
     const double EMERGENCY_BRAKE_DISTANCE = 10.0;
     const double CAR_SAFE_DIST_FRONT = 20.0; // meters
-    const double CAR_SAFE_DIST_REAR = 10.0; //meters
+    const double CAR_SAFE_DIST_REAR = 15.0; //meters
     const string GO_STRAIGHT = "^";
     const string GO_LEFT = "<";
     const string GO_RIGHT = ">";

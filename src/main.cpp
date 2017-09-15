@@ -111,7 +111,7 @@ int main() {
 
                     json msgJson;
 
-                    // TODONE: define a path made up of (x,y) points that the pathPlanner will visit sequentially every .02 seconds
+                    // TO-DONE: define a path made up of (x,y) points that the pathPlanner will visit sequentially every .02 seconds
 
                     //Update pathPlanner with its latest position from simulator
                     pathPlanner.update_position(car_x, car_y, car_s, car_yaw, car_speed);

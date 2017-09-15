@@ -173,9 +173,9 @@ void PathPlanner::update_state(const vector<double> &previous_path_x, const doub
         double speed = sqrt(vx * vx + vy * vy);
 
         int lane_index = 0;
-        if (d < 3) {
+        if (d < 4) {
             lane_index = 0;
-        } else if (d < 10) {
+        } else if (d < 8) {
             lane_index = 1;
         } else if (d < 12) {
             lane_index = 2;
@@ -243,8 +243,7 @@ void PathPlanner::update_state(const vector<double> &previous_path_x, const doub
     }
 }
 
-vector<vector<double>>
-PathPlanner::realize_state(const vector<double> &previous_path_x, const vector<double> &previous_path_y,
+vector<vector<double>> PathPlanner::realize_state(const vector<double> &previous_path_x, const vector<double> &previous_path_y,
                            const vector<double> &map_waypoints_x, const vector<double> &map_waypoints_y,
                            const vector<double> &map_waypoints_s) {
     vector<double> next_x_vals;
@@ -261,7 +260,7 @@ PathPlanner::realize_state(const vector<double> &previous_path_x, const vector<d
     bool hasSafeDistanceToRearCarLeftLane = ego_lane == 0 ? false : cars_dist_rear[ego_lane - 1] > CAR_SAFE_DIST_REAR;
     bool hasSafeDistanceToRearCarRightLane = ego_lane == 2 ? false : cars_dist_rear[ego_lane + 1] > CAR_SAFE_DIST_REAR;
 
-    bool isEmergencyBrake = cars_dist_front[ego_lane] < EMERGENCY_BRAKE_DISTANCE;
+    bool emergencyStop = cars_dist_front[ego_lane] < EMERGENCY_BRAKE_DISTANCE;
     bool tooCloseToFrontCar = !hasSafeDistanceToFrontCar && ref_v > cars_speed_front[ego_lane];
 
     string msg = ""
@@ -290,7 +289,7 @@ PathPlanner::realize_state(const vector<double> &previous_path_x, const vector<d
              << endl;
     }
     //Make speed control decision independent of steering decision
-    if (isEmergencyBrake) {
+    if (emergencyStop) {
         ref_v -= SPEED_CHANGE * 2.0;
     } else {
         ref_v += getSpeedChange(!tooCloseToFrontCar);
@@ -392,7 +391,8 @@ PathPlanner::realize_state(const vector<double> &previous_path_x, const vector<d
 
     //push all previous left over untravelled paths into next_x_vals and next_y_vals
     //for continuity in path planning
-    for (int i = 0; i < previous_path_x.size(); i++) {
+    // ONLY IF NOT EMERGENCY STOP
+    for (int i = 0;  i < previous_path_x.size(); i++) {
         next_x_vals.push_back(previous_path_x[i]);
         next_y_vals.push_back(previous_path_y[i]);
     }
