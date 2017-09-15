@@ -4,12 +4,12 @@
 
 #include <iostream>
 #include <cmath>
-#include "Car.h"
+#include "PathPlanner.h"
 #include "spline.h"
 
 using namespace std;
 
-Car::Car() {
+PathPlanner::PathPlanner() {
     ego_lane = 1;
     last_lane_change = 0;
     ref_v = 0.0;
@@ -20,10 +20,10 @@ Car::Car() {
     cars_dist_rear = {numeric_limits<double>::max(), numeric_limits<double>::max(), numeric_limits<double>::max()};
     ego_state = GO_STRAIGHT;
     setLaneChangeTime();
-    cout << "Autonomous Vehicle created at lane 1" << endl;
+    cout << "Autonomous Vehicle created in middle lane" << endl;
 }
 
-string Car::pad(double d, int pad, int trim_right) {
+string PathPlanner::pad(double d, int pad, int trim_right) {
     double dnew = round(d * 10.0) / 10.0;
     string val = " " + to_string(dnew);
     val = val.substr(0, val.length() - trim_right);
@@ -34,25 +34,25 @@ string Car::pad(double d, int pad, int trim_right) {
     return val;
 }
 
-double Car::pi() { return M_PI; }
+double PathPlanner::pi() { return M_PI; }
 
-double Car::deg2rad(double deg) { return deg * pi() / 180.0; }
+double PathPlanner::deg2rad(double deg) { return deg * pi() / 180.0; }
 
-void Car::setLaneChangeTime() {
+void PathPlanner::setLaneChangeTime() {
     time(&last_lane_change);
 }
 
-bool Car::isLaneChangeJerkSafe() {
+bool PathPlanner::isLaneChangeJerkSafe() {
     return getLastLaneChangeDiff() > WAIT_TIME_BETWEEN_LANE_CHANGES;
 }
 
-long Car::getLastLaneChangeDiff() {
+long PathPlanner::getLastLaneChangeDiff() {
     time_t now;
     time(&now);
     return now - last_lane_change;
 }
 
-double Car::getSpeedChange(bool increase) {
+double PathPlanner::getSpeedChange(bool increase) {
     if (!increase) {
         return -1.0 * SPEED_CHANGE;
     }
@@ -62,19 +62,19 @@ double Car::getSpeedChange(bool increase) {
     return SPEED_LIMIT - ego_speed;
 }
 
-bool Car::hasSafeDistanceToCarsLeftLane() {
+bool PathPlanner::hasSafeDistanceToCarsLeftLane() {
     return (ego_lane == 0 ? false : cars_dist_rear[ego_lane - 1] > CAR_SAFE_DIST_REAR)
            &&
            (ego_lane == 0 ? false : cars_dist_front[ego_lane - 1] > CAR_SAFE_DIST_FRONT);
 }
 
-bool Car::hasSafeDistanceToCarsRightLane() {
+bool PathPlanner::hasSafeDistanceToCarsRightLane() {
     return (ego_lane == 2 ? false : cars_dist_rear[ego_lane + 1] > CAR_SAFE_DIST_REAR)
            &&
            (ego_lane == 2 ? false : cars_dist_front[ego_lane + 1] > CAR_SAFE_DIST_FRONT);
 }
 
-bool Car::attemptLeftLaneChange() {
+bool PathPlanner::attemptLeftLaneChange() {
     if (hasSafeDistanceToCarsLeftLane()) {
         setLaneChangeTime();
         ego_lane = ego_state == GO_LEFT ? ego_lane - 1 : ego_lane + 1;
@@ -85,7 +85,7 @@ bool Car::attemptLeftLaneChange() {
     }
 }
 
-bool Car::attemptRightLaneChange() {
+bool PathPlanner::attemptRightLaneChange() {
     if (hasSafeDistanceToCarsRightLane()) {
         setLaneChangeTime();
         ego_lane = ego_state == GO_LEFT ? ego_lane - 1 : ego_lane + 1;
@@ -96,11 +96,12 @@ bool Car::attemptRightLaneChange() {
     }
 }
 
-bool Car::attemptEitherLaneChange() {
+bool PathPlanner::attemptEitherLaneChange() {
     return attemptLeftLaneChange() || attemptRightLaneChange();
 }
 
-vector<double> Car::getXY(double s, double d, vector<double> maps_s, vector<double> maps_x, vector<double> maps_y) {
+vector<double>
+PathPlanner::getXY(double s, double d, vector<double> maps_s, vector<double> maps_x, vector<double> maps_y) {
     int prev_wp = -1;
 
     while (s > maps_s[prev_wp + 1] && (prev_wp < (int) (maps_s.size() - 1))) {
@@ -124,7 +125,7 @@ vector<double> Car::getXY(double s, double d, vector<double> maps_s, vector<doub
     return {x, y};
 }
 
-void Car::update_position(double x, double y, double s, double yaw, double speed) {
+void PathPlanner::update_position(double x, double y, double s, double yaw, double speed) {
     ego_x = x;
     ego_y = y;
     ego_s = s;
@@ -132,8 +133,8 @@ void Car::update_position(double x, double y, double s, double yaw, double speed
     ego_speed = speed;
 }
 
-void Car::update_state(const vector<double> &previous_path_x, const double &end_path_s,
-                       const vector<vector<double>> &sensor_fusion) {
+void PathPlanner::update_state(const vector<double> &previous_path_x, const double &end_path_s,
+                               const vector<vector<double>> &sensor_fusion) {
     long prev_size = previous_path_x.size();
 
     //if previous planning was done, set ego_future_s to last known end_path_s point
@@ -172,9 +173,9 @@ void Car::update_state(const vector<double> &previous_path_x, const double &end_
         double speed = sqrt(vx * vx + vy * vy);
 
         int lane_index = 0;
-        if (d < 4) {
+        if (d < 3) {
             lane_index = 0;
-        } else if (d < 8) {
+        } else if (d < 10) {
             lane_index = 1;
         } else if (d < 12) {
             lane_index = 2;
@@ -242,9 +243,10 @@ void Car::update_state(const vector<double> &previous_path_x, const double &end_
     }
 }
 
-vector<vector<double>> Car::realize_state(const vector<double> &previous_path_x, const vector<double> &previous_path_y,
-                                          const vector<double> &map_waypoints_x, const vector<double> &map_waypoints_y,
-                                          const vector<double> &map_waypoints_s) {
+vector<vector<double>>
+PathPlanner::realize_state(const vector<double> &previous_path_x, const vector<double> &previous_path_y,
+                           const vector<double> &map_waypoints_x, const vector<double> &map_waypoints_y,
+                           const vector<double> &map_waypoints_s) {
     vector<double> next_x_vals;
     vector<double> next_y_vals;
     string ego_lane_str = ego_lane == 0 ? "Left  " : (ego_lane == 1 ? "Middle" : "Right ");
@@ -277,7 +279,9 @@ vector<vector<double>> Car::realize_state(const vector<double> &previous_path_x,
     if (last_msg != msg) {
         last_msg = msg;
         if (banner_counter > 20) {
-            cout << "current lane - cur lane dist - left v - middle v - right v - steer - left lane clear - right lane clear - time since last lane change: " << endl;
+            cout
+                    << "current lane - cur lane dist - left v - middle v - right v - steer - left lane clear - right lane clear - time since last lane change: "
+                    << endl;
             banner_counter = 0;
         }
         banner_counter++;

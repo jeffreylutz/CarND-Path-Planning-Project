@@ -10,10 +10,10 @@
 
 using namespace std;
 
-class Car {
+class PathPlanner {
 
 private:
-    const double SPEED_LIMIT = 49.95;// 49.5mph = 22.098m/s
+    const double SPEED_LIMIT = 49.90;// 49.5mph = 22.098m/s
     const double SPEED_CHANGE = 0.25;
     const int WAIT_TIME_BETWEEN_LANE_CHANGES = 3; // seconds between lane change to minimize jerk
     const double CURRENT_LANE_DISTANCE_MULTIPLIER = 1.10;
@@ -46,32 +46,42 @@ private:
     string last_msg;
 
     double pi();
+
     double deg2rad(double deg);
 
     vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> maps_x, vector<double> maps_y);
+
     void setLaneChangeTime();
+
     long getLastLaneChangeDiff();
+
     bool isLaneChangeJerkSafe();
+
     double getSpeedChange(bool increase);
+
     bool hasSafeDistanceToCarsLeftLane();
+
     bool hasSafeDistanceToCarsRightLane();
+
     bool attemptLeftLaneChange();
+
     bool attemptRightLaneChange();
+
     bool attemptEitherLaneChange();
 
-    string pad(double d,int pad, int trim_right);
+    string pad(double d, int pad, int trim_right);
 
 public:
-    Car();
+    PathPlanner();
 
     void update_position(double x, double y, double s, double yaw, double speed);
 
     void update_state(const vector<double> &previous_path_x, const double &end_path_s,
-                      const vector <vector<double>> &sensor_fusion);
+                      const vector<vector<double>> &sensor_fusion);
 
-    vector <vector<double>> realize_state(const vector<double> &previous_path_x, const vector<double> &previous_path_y,
-                                          const vector<double> &map_waypoints_x, const vector<double> &map_waypoints_y,
-                                          const vector<double> &map_waypoints_s);
+    vector<vector<double>> realize_state(const vector<double> &previous_path_x, const vector<double> &previous_path_y,
+                                         const vector<double> &map_waypoints_x, const vector<double> &map_waypoints_y,
+                                         const vector<double> &map_waypoints_s);
 };
 
 

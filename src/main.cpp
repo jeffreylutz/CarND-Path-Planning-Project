@@ -5,7 +5,7 @@
 #include <thread>
 #include "Eigen-3.3/Eigen/Core"
 #include "json.hpp"
-#include "Car.h"
+#include "PathPlanner.h"
 
 using namespace std;
 
@@ -69,9 +69,9 @@ int main() {
     Define a new AutonomousVehicle instance named ego
     *************************/
 
-    Car car;
+    PathPlanner pathPlanner;
 
-    h.onMessage([&car, &map_waypoints_x, &map_waypoints_y, &map_waypoints_s, &map_waypoints_dx, &map_waypoints_dy](
+    h.onMessage([&pathPlanner, &map_waypoints_x, &map_waypoints_y, &map_waypoints_s, &map_waypoints_dx, &map_waypoints_dy](
             uWS::WebSocket<uWS::SERVER> *ws, char *data, size_t length,
             uWS::OpCode opCode) {
         // "42" at the start of the message means there's a websocket message event.
@@ -91,7 +91,7 @@ int main() {
                 if (event == "telemetry") {
                     // j[1] is the data JSON object
 
-                    // Main car's localization Data
+                    // Main pathPlanner's localization Data
                     double car_x = j[1]["x"];
                     double car_y = j[1]["y"];
                     double car_s = j[1]["s"];
@@ -111,18 +111,18 @@ int main() {
 
                     json msgJson;
 
-                    // TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
+                    // TODONE: define a path made up of (x,y) points that the pathPlanner will visit sequentially every .02 seconds
 
-                    //Update car with its latest position from simulator
-                    car.update_position(car_x, car_y, car_s, car_yaw, car_speed);
+                    //Update pathPlanner with its latest position from simulator
+                    pathPlanner.update_position(car_x, car_y, car_s, car_yaw, car_speed);
 
-                    //car has 3 states namely Keep Lane (KL), Lane Change Left (LCL) and Lane Change Right(LCR)
+                    //pathPlanner has 3 states namely Keep Lane (KL), Lane Change Left (LCL) and Lane Change Right(LCR)
                     //update its current preferred state based on current road situation
-                    car.update_state(previous_path_x, end_path_s, sensor_fusion);
+                    pathPlanner.update_state(previous_path_x, end_path_s, sensor_fusion);
 
                     //realize the chosen state by executing the state once it is safe to do so.
-                    vector<vector<double>> path = car.realize_state(previous_path_x, previous_path_y, map_waypoints_x,
-                                                              map_waypoints_y, map_waypoints_s);
+                    vector<vector<double>> path = pathPlanner.realize_state(previous_path_x, previous_path_y, map_waypoints_x,
+                                                                    map_waypoints_y, map_waypoints_s);
 
                     msgJson["next_x"] = path[0];
                     msgJson["next_y"] = path[1];
