@@ -27,6 +27,32 @@ string hasData(const string &s) {
     return "";
 }
 
+/***********************
+Define a new PathPlanner instance named pathPlanner
+*************************/
+PathPlanner pathPlanner;
+
+void update_position(double x, double y, double s, double yaw, double speed) {
+    //Update pathPlanner with its latest position from simulator
+    pathPlanner.update_position(x, y, s, yaw, speed);
+}
+
+void update_state(const vector<double> &previous_path_x, const double &end_path_s,
+                  const vector<vector<double>> &sensor_fusion) {
+    //pathPlanner has 3 states namely Keep Lane (KL), Lane Change Left (LCL) and Lane Change Right(LCR)
+    //update its current preferred state based on current road situation
+    pathPlanner.update_state(previous_path_x, end_path_s, sensor_fusion);
+}
+
+vector<vector<double>> realize_state(const vector<double> &previous_path_x, const vector<double> &previous_path_y,
+                                     const vector<double> &map_waypoints_x, const vector<double> &map_waypoints_y,
+                                     const vector<double> &map_waypoints_s) {
+    //realize the chosen state by executing the state once it is safe to do so.
+    return pathPlanner.realize_state(previous_path_x, previous_path_y, map_waypoints_x, map_waypoints_y,
+                                     map_waypoints_s);
+}
+
+
 int main() {
     uWS::Hub h;
 
@@ -64,14 +90,8 @@ int main() {
         map_waypoints_dy.push_back(d_y);
     }
 
-
-    /***********************
-    Define a new AutonomousVehicle instance named ego
-    *************************/
-
-    PathPlanner pathPlanner;
-
-    h.onMessage([&pathPlanner, &map_waypoints_x, &map_waypoints_y, &map_waypoints_s, &map_waypoints_dx, &map_waypoints_dy](
+    h.onMessage(
+            [&map_waypoints_x, &map_waypoints_y, &map_waypoints_s, &map_waypoints_dx, &map_waypoints_dy](
                     uWS::WebSocket<uWS::SERVER> *ws, char *data, size_t length,
                     uWS::OpCode opCode) {
                 // "42" at the start of the message means there's a websocket message event.
@@ -114,16 +134,16 @@ int main() {
                             // TO-DONE: define a path made up of (x,y) points that the pathPlanner will visit sequentially every .02 seconds
 
                             //Update pathPlanner with its latest position from simulator
-                            pathPlanner.update_position(car_x, car_y, car_s, car_yaw, car_speed);
+                            update_position(car_x, car_y, car_s, car_yaw, car_speed);
 
                             //pathPlanner has 3 states namely Keep Lane (KL), Lane Change Left (LCL) and Lane Change Right(LCR)
                             //update its current preferred state based on current road situation
-                            pathPlanner.update_state(previous_path_x, end_path_s, sensor_fusion);
+                            update_state(previous_path_x, end_path_s, sensor_fusion);
 
                             //realize the chosen state by executing the state once it is safe to do so.
-                            vector<vector<double>> path = pathPlanner.realize_state(previous_path_x, previous_path_y,
-                                                                                    map_waypoints_x,
-                                                                                    map_waypoints_y, map_waypoints_s);
+                            vector<vector<double>> path = realize_state(previous_path_x, previous_path_y,
+                                                                        map_waypoints_x,
+                                                                        map_waypoints_y, map_waypoints_s);
 
                             msgJson["next_x"] = path[0];
                             msgJson["next_y"] = path[1];

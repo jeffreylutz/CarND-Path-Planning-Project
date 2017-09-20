@@ -243,7 +243,8 @@ void PathPlanner::update_state(const vector<double> &previous_path_x, const doub
     }
 }
 
-vector<vector<double>> PathPlanner::realize_state(const vector<double> &previous_path_x, const vector<double> &previous_path_y,
+vector<vector<double>>
+PathPlanner::realize_state(const vector<double> &previous_path_x, const vector<double> &previous_path_y,
                            const vector<double> &map_waypoints_x, const vector<double> &map_waypoints_y,
                            const vector<double> &map_waypoints_s) {
     vector<double> next_x_vals;
@@ -392,7 +393,7 @@ vector<vector<double>> PathPlanner::realize_state(const vector<double> &previous
     //push all previous left over untravelled paths into next_x_vals and next_y_vals
     //for continuity in path planning
     // ONLY IF NOT EMERGENCY STOP
-    for (int i = 0;  i < previous_path_x.size(); i++) {
+    for (int i = 0; i < previous_path_x.size(); i++) {
         next_x_vals.push_back(previous_path_x[i]);
         next_y_vals.push_back(previous_path_y[i]);
     }
