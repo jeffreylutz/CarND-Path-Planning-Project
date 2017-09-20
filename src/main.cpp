@@ -72,74 +72,75 @@ int main() {
     PathPlanner pathPlanner;
 
     h.onMessage([&pathPlanner, &map_waypoints_x, &map_waypoints_y, &map_waypoints_s, &map_waypoints_dx, &map_waypoints_dy](
-            uWS::WebSocket<uWS::SERVER> *ws, char *data, size_t length,
-            uWS::OpCode opCode) {
-        // "42" at the start of the message means there's a websocket message event.
-        // The 4 signifies a websocket message
-        // The 2 signifies a websocket event
-        //auto sdata = string(data).substr(0, length);
-        //cout << sdata << endl;
-        if (length > 2 && data[0] == '4' && data[1] == '2') {
+                    uWS::WebSocket<uWS::SERVER> *ws, char *data, size_t length,
+                    uWS::OpCode opCode) {
+                // "42" at the start of the message means there's a websocket message event.
+                // The 4 signifies a websocket message
+                // The 2 signifies a websocket event
+                //auto sdata = string(data).substr(0, length);
+                //cout << sdata << endl;
+                if (length > 2 && data[0] == '4' && data[1] == '2') {
 
-            auto s = hasData(data);
+                    auto s = hasData(data);
 
-            if (!s.empty()) {
-                auto j = json::parse(s);
+                    if (!s.empty()) {
+                        auto j = json::parse(s);
 
-                string event = j[0].get<string>();
+                        string event = j[0].get<string>();
 
-                if (event == "telemetry") {
-                    // j[1] is the data JSON object
+                        if (event == "telemetry") {
+                            // j[1] is the data JSON object
 
-                    // Main pathPlanner's localization Data
-                    double car_x = j[1]["x"];
-                    double car_y = j[1]["y"];
-                    double car_s = j[1]["s"];
-                    double car_d = j[1]["d"];
-                    double car_yaw = j[1]["yaw"];
-                    double car_speed = j[1]["speed"];
+                            // Main pathPlanner's localization Data
+                            double car_x = j[1]["x"];
+                            double car_y = j[1]["y"];
+                            double car_s = j[1]["s"];
+                            double car_d = j[1]["d"];
+                            double car_yaw = j[1]["yaw"];
+                            double car_speed = j[1]["speed"];
 
-                    // Previous path data given to the Planner
-                    auto previous_path_x = j[1]["previous_path_x"];
-                    auto previous_path_y = j[1]["previous_path_y"];
-                    // Previous path's end s and d values
-                    double end_path_s = j[1]["end_path_s"];
-                    double end_path_d = j[1]["end_path_d"];
+                            // Previous path data given to the Planner
+                            auto previous_path_x = j[1]["previous_path_x"];
+                            auto previous_path_y = j[1]["previous_path_y"];
+                            // Previous path's end s and d values
+                            double end_path_s = j[1]["end_path_s"];
+                            double end_path_d = j[1]["end_path_d"];
 
-                    // Sensor Fusion Data, a list of all other cars on the same side of the road.
-                    auto sensor_fusion = j[1]["sensor_fusion"];
+                            // Sensor Fusion Data, a list of all other cars on the same side of the road.
+                            auto sensor_fusion = j[1]["sensor_fusion"];
 
-                    json msgJson;
+                            json msgJson;
 
-                    // TO-DONE: define a path made up of (x,y) points that the pathPlanner will visit sequentially every .02 seconds
+                            // TO-DONE: define a path made up of (x,y) points that the pathPlanner will visit sequentially every .02 seconds
 
-                    //Update pathPlanner with its latest position from simulator
-                    pathPlanner.update_position(car_x, car_y, car_s, car_yaw, car_speed);
+                            //Update pathPlanner with its latest position from simulator
+                            pathPlanner.update_position(car_x, car_y, car_s, car_yaw, car_speed);
 
-                    //pathPlanner has 3 states namely Keep Lane (KL), Lane Change Left (LCL) and Lane Change Right(LCR)
-                    //update its current preferred state based on current road situation
-                    pathPlanner.update_state(previous_path_x, end_path_s, sensor_fusion);
+                            //pathPlanner has 3 states namely Keep Lane (KL), Lane Change Left (LCL) and Lane Change Right(LCR)
+                            //update its current preferred state based on current road situation
+                            pathPlanner.update_state(previous_path_x, end_path_s, sensor_fusion);
 
-                    //realize the chosen state by executing the state once it is safe to do so.
-                    vector<vector<double>> path = pathPlanner.realize_state(previous_path_x, previous_path_y, map_waypoints_x,
-                                                                    map_waypoints_y, map_waypoints_s);
+                            //realize the chosen state by executing the state once it is safe to do so.
+                            vector<vector<double>> path = pathPlanner.realize_state(previous_path_x, previous_path_y,
+                                                                                    map_waypoints_x,
+                                                                                    map_waypoints_y, map_waypoints_s);
 
-                    msgJson["next_x"] = path[0];
-                    msgJson["next_y"] = path[1];
+                            msgJson["next_x"] = path[0];
+                            msgJson["next_y"] = path[1];
 
-                    auto msg = "42[\"control\"," + msgJson.dump() + "]";
+                            auto msg = "42[\"control\"," + msgJson.dump() + "]";
 
-                    //this_thread::sleep_for(chrono::milliseconds(1000));
-                    (*ws).send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+                            //this_thread::sleep_for(chrono::milliseconds(1000));
+                            (*ws).send(msg.data(), msg.length(), uWS::OpCode::TEXT);
 
+                        }
+                    } else {
+                        // Manual driving
+                        std::string msg = "42[\"manual\",{}]";
+                        (*ws).send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+                    }
                 }
-            } else {
-                // Manual driving
-                std::string msg = "42[\"manual\",{}]";
-                (*ws).send(msg.data(), msg.length(), uWS::OpCode::TEXT);
-            }
-        }
-    });
+            });
 
     // We don't need this since we're not using HTTP but if it's removed the
     // program
